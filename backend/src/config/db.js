@@ -4,7 +4,7 @@ require('dotenv').config();
 const connString = process.env.DATABASE_URL?.trim();
 
 const pool = new Pool({
-    connectionString: connString || 'postgresql://postgres.uagnuhefmfdnjuvofqcf:N8NWFBack2245@aws-0-us-west-2.pooler.supabase.com:6543/postgres',
+    connectionString: connString,
     ssl: connString && connString.includes('supabase') ? { rejectUnauthorized: false } : false,
     connectionTimeoutMillis: 10000 // 10 seconds timeout
 });

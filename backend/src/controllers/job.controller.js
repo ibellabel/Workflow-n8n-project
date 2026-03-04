@@ -40,3 +40,18 @@ exports.getJobRanking = async (req, res) => {
         res.status(500).json({ error: "Error interno al obtener el ranking de la vacante." });
     }
 };
+
+exports.getCompanyJobs = async (req, res) => {
+    try {
+        const { company_id } = req.params;
+        if (!company_id) return res.status(400).json({ error: "Falta company_id en la ruta." });
+        
+        const result = await matchService.getCompanyJobs(company_id);
+        if (result.error) return res.status(500).json({ error: result.error });
+        
+        res.json(result.jobs || []);
+    } catch (error) {
+        console.error("Error en getCompanyJobs controller:", error);
+        res.status(500).json({ error: "Error interno al obtener las vacantes." });
+    }
+};
