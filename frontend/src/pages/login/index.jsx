@@ -1,158 +1,148 @@
-// frontend/src/pages/Login/index.jsx
-import { useState } from "react";
-import { Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Check, Sparkles } from "lucide-react";
 import { Logo } from "./components/Logo";
 import { LoginForm } from "./components/LoginForm";
 import { RegisterForm } from "./components/RegisterForm";
+import { CompanyRegisterForm } from "./components/CompanyRegisterForm";
 import { ScorePreviewCard } from "./components/ScorePreviewCard";
 
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState("login");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
-     <div className="min-h-screen flex flex-col lg:flex-row">
+     <div className="min-h-screen flex flex-col lg:flex-row bg-slate-50 font-sans selection:bg-indigo-500 selection:text-white">
       {/* LEFT PANEL - Hero Section */}
-      <div 
-        className="lg:w-[44%] bg-[#0D3A8C] relative overflow-hidden lg:min-h-screen"
-        style={{
-          backgroundImage: `radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px)`,
-          backgroundSize: "24px 24px"
-        }}
-      >
-        {/* Mobile compact header */}
-        <div className="lg:hidden flex items-center justify-center h-[120px] bg-gradient-to-r from-[#0D3A8C] to-[#1A4FBD] px-6">
+      <div className="lg:w-5/12 relative overflow-hidden flex flex-col justify-between bg-gradient-to-br from-[#0a192f] via-[#112240] to-[#233554] shadow-2xl z-10">
+        
+        {/* Animated background elements */}
+        <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-96 h-96 bg-indigo-500/20 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/3 w-96 h-96 bg-blue-500/20 rounded-full blur-[100px] pointer-events-none"></div>
+        
+        {/* Mobile Header */}
+        <div className="lg:hidden flex items-center justify-center p-6 bg-white/5 backdrop-blur-md border-b border-white/10">
           <Logo variant="compact" />
         </div>
 
-        {/* Desktop content */}
-        <div className="hidden lg:flex flex-col h-full p-12">
+        {/* Desktop Content */}
+        <div className="hidden lg:flex flex-col h-full p-12 lg:p-16 relative z-10 w-full max-w-xl mx-auto">
           {/* Logo */}
-          <div className="mb-16">
+          <div className={`mb-16 transform transition-all duration-1000 ${mounted ? 'translate-y-0 opacity-100' : '-translate-y-8 opacity-0'}`}>
             <Logo />
           </div>
 
           {/* Hero Content */}
-          <div className="flex-1 flex flex-col justify-center max-w-lg">
-            <h1 
-              className="text-white mb-8 leading-tight"
-              style={{ 
-                fontSize: "2.5rem",
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
-                fontWeight: 700,
-                lineHeight: "1.2"
-              }}
-            >
-              Impulsa tu carrera con inteligencia artificial
+          <div className="flex-1 flex flex-col justify-center">
+            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-indigo-300 text-xs font-semibold w-fit mb-6 backdrop-blur-sm transform transition-all duration-700 delay-100 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
+              <Sparkles className="w-3.5 h-3.5" /> IA de Próxima Generación
+            </div>
+            
+            <h1 className={`text-white mb-8 text-4xl xl:text-5xl font-extrabold tracking-tight leading-[1.1] transform transition-all duration-700 delay-200 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
+              Impulsa tu carrera al <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">siguiente nivel</span>
             </h1>
 
             {/* Feature Bullets */}
-            <div className="space-y-5 mb-12">
+            <div className={`space-y-6 mb-12 transform transition-all duration-700 delay-300 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
               {[
-                "Análisis y score de tu hoja de vida",
-                "Recomendaciones de mejora y cursos",
-                "Match con ofertas laborales reales"
+                "Análisis semántico de tu CV",
+                "Recomendaciones hyper-personalizadas",
+                "Conexión directa con empresas Top"
               ].map((feature, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <div 
-                    className="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center"
-                    style={{ backgroundColor: "#4CC9A4" }}
-                  >
-                    <Check className="w-4 h-4 text-white" strokeWidth={3} />
+                <div key={index} className="flex items-center gap-4 group">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-500/40 transition-all duration-300">
+                    <Check className="w-4 h-4 text-indigo-300" strokeWidth={2.5} />
                   </div>
-                  <p className="text-white/90 text-base leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>
+                  <p className="text-slate-300 text-lg font-medium group-hover:text-white transition-colors duration-300">
                     {feature}
                   </p>
                 </div>
               ))}
             </div>
 
-            {/* Score Preview Card */}
-            <ScorePreviewCard />
+            {/* Score Preview Card - Floating Animation */}
+            <div className={`transform transition-all duration-1000 delay-500 hover:scale-[1.02] ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0'}`}>
+              <div className="animate-float">
+                <ScorePreviewCard />
+              </div>
+            </div>
           </div>
 
-          {/* Footer Text */}
-          <div className="mt-auto">
-            <p className="text-white/60 text-sm" style={{ fontFamily: "'Inter', sans-serif" }}>
-              Tu carrera, potenciada por IA
-            </p>
+          <div className={`mt-12 text-slate-500 text-sm font-medium transform transition-all duration-700 delay-700 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+            © {new Date().getFullYear()} Magneto AI • El poder del talento
           </div>
         </div>
       </div>
 
       {/* RIGHT PANEL - Auth Form */}
-      <div className="lg:w-[56%] bg-[#F7F9FC] flex items-center justify-center px-6 py-12 lg:py-0">
-        <div className="w-full max-w-[380px]">
+      <div className="lg:w-7/12 flex-1 flex items-center justify-center p-6 lg:p-12 relative">
+        {/* Decorator blobs for the right side */}
+        <div className="absolute top-20 right-20 w-64 h-64 bg-indigo-100 rounded-full blur-[80px] opacity-60 pointer-events-none"></div>
+        <div className="absolute bottom-20 left-20 w-64 h-64 bg-cyan-100 rounded-full blur-[80px] opacity-60 pointer-events-none"></div>
+
+        <div className={`w-full max-w-md w-full relative z-10 transition-all duration-700 transform ${mounted ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'}`}>
           {/* Card Container */}
-          <div 
-            className="bg-white rounded-[16px] p-8"
-            style={{ 
-              boxShadow: "0 4px 24px rgba(0, 0, 0, 0.06)"
-            }}
-          >
+          <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 lg:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
+            
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Bienvenido de vuelta</h2>
+              <p className="text-sm text-slate-500 mt-2">Ingresa tus datos para acceder a tu dashboard</p>
+            </div>
+
             {/* Segmented Control Tabs */}
-            <div 
-              className="flex gap-1 p-1 rounded-[10px] mb-8"
-              style={{ backgroundColor: "#EEF2FF" }}
-            >
+            <div className="flex gap-2 p-1.5 rounded-2xl bg-slate-100/80 mb-8 border border-slate-200/50">
               <button
                 onClick={() => setActiveTab("login")}
-                className={`flex-1 h-10 rounded-[8px] font-semibold text-sm transition-all ${
+                className={`flex-1 h-11 rounded-xl text-sm font-bold transition-all duration-300 ${
                   activeTab === "login"
-                    ? "bg-white shadow-sm"
-                    : "text-[#64748B] hover:text-[#1A4FBD]"
+                    ? "bg-white text-indigo-600 shadow-sm ring-1 ring-black/5"
+                    : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
                 }`}
-                style={activeTab === "login" ? { color: "#1A4FBD", fontWeight: 600 } : { fontWeight: 600 }}
               >
-                Iniciar sesión
+                Inicia Sesión
               </button>
               <button
                 onClick={() => setActiveTab("register")}
-                className={`flex-1 h-10 rounded-[8px] font-semibold text-sm transition-all ${
+                className={`flex-1 h-11 rounded-xl text-sm font-bold transition-all duration-300 ${
                   activeTab === "register"
-                    ? "bg-white shadow-sm"
-                    : "text-[#64748B] hover:text-[#1A4FBD]"
+                    ? "bg-white text-indigo-600 shadow-sm ring-1 ring-black/5"
+                    : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
                 }`}
-                style={activeTab === "register" ? { color: "#1A4FBD", fontWeight: 600 } : { fontWeight: 600 }}
               >
-                Registrarse
+                Crea tu Cuenta
               </button>
             </div>
 
-            {/* Forms */}
-            {activeTab === "login" ? (
-              <LoginForm onSubmit={(data) => console.log("Login:", data)} />
-            ) : (
-              <RegisterForm onSubmit={(data) => console.log("Register:", data)} />
-            )}
-          </div>
+            {/* Forms with slight slide animation */}
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+              {activeTab === "login" && <LoginForm onSubmit={(data) => console.log("Login:", data)} />}
+              {activeTab === "register" && <RegisterForm onSubmit={(data) => console.log("Register:", data)} />}
+              {activeTab === "company_register" && <CompanyRegisterForm onSubmit={(data) => console.log("Company:", data)} onBack={() => setActiveTab('login')} />}
+            </div>
+            
+            {/* Alternative auth separator */}
+            {activeTab !== "company_register" && (
+              <>
+                <div className="mt-8 flex items-center justify-center gap-4">
+                  <div className="h-px bg-slate-200 flex-1"></div>
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">O explora</span>
+                  <div className="h-px bg-slate-200 flex-1"></div>
+                </div>
 
-          {/* Footer Links */}
-          <div className="mt-6 text-center">
-            <p className="text-sm" style={{ color: "#64748B", fontFamily: "'Inter', sans-serif" }}>
-              {activeTab === "login" ? (
-                <>
-                  ¿No tienes cuenta?{" "}
+                {/* Footer Links */}
+                <div className="mt-6">
                   <button 
-                    onClick={() => setActiveTab("register")}
-                    className="font-semibold hover:underline"
-                    style={{ color: "#1A4FBD" }}
+                    onClick={() => setActiveTab('company_register')}
+                    className="w-full h-11 flex items-center justify-center gap-2 rounded-xl text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all focus:ring-4 focus:ring-slate-100"
                   >
-                    Regístrate gratis
+                    Regístrate como Empresa
                   </button>
-                </>
-              ) : (
-                <>
-                  ¿Ya tienes cuenta?{" "}
-                  <button 
-                    onClick={() => setActiveTab("login")}
-                    className="font-semibold hover:underline"
-                    style={{ color: "#1A4FBD" }}
-                  >
-                    Inicia sesión
-                  </button>
-                </>
-              )}
-            </p>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
