@@ -1,4 +1,4 @@
-const db = require('../config/db');
+const authModel = require('./auth.model');
 
 exports.login = async (req, res) => {
     try {
@@ -8,14 +8,12 @@ exports.login = async (req, res) => {
             return res.status(400).json({ error: "Email y password son requeridos" });
         }
 
-        // 1. Buscar el usuario
-        const userRes = await db.query('SELECT id, email, role, password_hash FROM users WHERE email = $1 AND is_active = true', [email]);
+        // 1. Buscar el usuario delegando en el Modelo
+        const user = await authModel.findActiveUserByEmail(email);
         
-        if (userRes.rows.length === 0) {
+        if (!user) {
             return res.status(401).json({ error: "Credenciales inválidas o usuario inactivo" });
         }
-        
-        const user = userRes.rows[0];
         
         // MVP: Comparación simple del password (En prod usar bcrypt)
         if (user.password_hash !== password) {
@@ -23,19 +21,16 @@ exports.login = async (req, res) => {
         }
 
         // Actualizar último login
-        await db.query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
+        await authModel.updateLastLogin(user.id);
 
         let profileData = null;
         
-        // 2. Si es candidato, buscar su ID de candidato profile (que usamos en frontend)
+        // 2. Si es candidato, buscar su ID de candidato profile delegando en el Modelo
         if (user.role === 'CANDIDATE') {
-             const candidateRes = await db.query('SELECT id, full_name, profile_score FROM candidate_profiles WHERE user_id = $1', [user.id]);
-             if (candidateRes.rows.length > 0) {
-                 profileData = candidateRes.rows[0];
-             }
+            profileData = await authModel.findCandidateProfileByUserId(user.id);
         }
 
-        // 3. Devolver datos de sesión
+        // 3. Devolver datos de sesión (Controller Response)
         res.json({
             message: "Login exitoso",
             user: {

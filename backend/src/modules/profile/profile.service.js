@@ -1,6 +1,7 @@
-const db = require('../config/db');
+const profileModel = require('./profile.model');
+const axios = require('axios');
 
-class ScoringService {
+class ProfileService {
     async calculateScore(candidateData) {
         const { id, skills, expected_salary_cop, experience_years, location_city } = candidateData;
         
@@ -33,19 +34,11 @@ class ScoringService {
         score = Math.min(100, Math.max(0, score));
         const feedbackStr = feedback.length > 0 ? feedback.join(" ") : "Perfil muy competitivo y alineado al mercado actual.";
 
-        // Update real DB if id is provided
+        // Update real DB if id is provided using the Model
         if (id) {
             try {
-                await db.query(
-                    `UPDATE candidate_profiles SET profile_score = $1, feedback_notes = $2 WHERE id = $3`,
-                    [score, feedbackStr, id]
-                );
-                
-                // Generar el log de auditoria de AI (HU20)
-                await db.query(
-                    `INSERT INTO audit_logs (action, candidate_id, details) VALUES ('SCORING_CALCULATED', $1, $2)`, 
-                    [id, JSON.stringify({ score, incomplete: is_incomplete, feedback: feedbackStr })]
-                );
+                await profileModel.updateProfileScore(id, score, feedbackStr);
+                await profileModel.insertAuditLog('SCORING_CALCULATED', id, { score, incomplete: is_incomplete, feedback: feedbackStr });
             } catch (err) {
                 console.warn("No se pudo actualizar la BD (Score):", err.message);
             }
@@ -53,6 +46,19 @@ class ScoringService {
 
         return { score, feedback: feedbackStr };
     }
+
+    async triggerUploadCvWebhook(candidate_id, salary, city, file) {
+        const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/cv-upload'; 
+        const FormData = require('form-data');
+        const formData = new FormData();
+        formData.append('cv', file.buffer, file.originalname);
+        formData.append('candidate_id', candidate_id);
+        formData.append('expected_salary_cop', salary);
+        formData.append('city', city);
+        
+        const n8nRes = await axios.post(n8nWebhookUrl, formData, { headers: formData.getHeaders() });
+        return n8nRes.data;
+    }
 }
 
-module.exports = new ScoringService();
+module.exports = new ProfileService();
