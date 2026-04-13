@@ -11,4 +11,7 @@ router.get('/top-matches', matchController.getTopMatches);
 // HU18: Obtener estadísticas de aplicación de un candidato
 router.get('/stats', matchController.getStats);
 
+// Feed de Empleos Aspiracionales (Retos de Crecimiento Profesional)
+router.get('/aspirational-matches', matchController.getAspirationalMatches);
+
 module.exports = router;

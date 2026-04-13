@@ -1,10 +1,16 @@
 import { useState, useEffect } from "react";
-import { Briefcase, Target, ClipboardList, LayoutDashboard, LogOut } from "lucide-react";
+import axios from "axios";
+import { Briefcase, Target, ClipboardList, LayoutDashboard, LogOut, Sparkles, ChevronRight, TrendingUp, CheckCircle2, AlertCircle } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("applications");
   const [applications, setApplications] = useState([]);
+
+  // Aspirational Match state
+  const [aspirationalMatches, setAspirationalMatches] = useState([]);
+  const [isLoadingAspirations, setIsLoadingAspirations] = useState(false);
+  const [aspirationsError, setAspirationsError] = useState(null);
 
   useEffect(() => {
     const fetchApplications = async () => {
@@ -34,7 +40,24 @@ export default function DashboardPage() {
       setApplications(formatted);
     };
 
+    const fetchAspirational = async () => {
+      setIsLoadingAspirations(true);
+      setAspirationsError(null);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const candidateId = user?.id || "55555555-5555-5555-5555-555555555555";
+        const res = await axios.get(`http://localhost:3001/api/aspirational-matches?candidate_id=${candidateId}`);
+        setAspirationalMatches(res.data.matches || []);
+      } catch (err) {
+        console.error("Error fetching aspirational matches:", err);
+        setAspirationsError(err?.response?.data?.error || "Error al cargar empleos aspiracionales");
+      } finally {
+        setIsLoadingAspirations(false);
+      }
+    };
+
     fetchApplications();
+    fetchAspirational();
   }, []);
 
   const windows = [
@@ -100,6 +123,92 @@ export default function DashboardPage() {
         </header>
 
         <div className="flex-1 overflow-auto p-6 bg-slate-50">
+
+          {activeTab === "aspirations" && (
+            <div className="max-w-4xl mx-auto space-y-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                  <TrendingUp className="text-white w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">Feed de Crecimiento</h2>
+                  <p className="text-slate-500">
+                    Trabajos desafiantes que impulsarán tu carrera al siguiente nivel
+                  </p>
+                </div>
+              </div>
+
+              {isLoadingAspirations ? (
+                <div className="flex justify-center p-12">
+                  <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                </div>
+              ) : aspirationsError ? (
+                <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 shrink-0" />
+                  <p>{aspirationsError}</p>
+                </div>
+              ) : aspirationalMatches.length === 0 ? (
+                <div className="bg-white p-12 rounded-2xl text-center border border-slate-100">
+                  <Sparkles className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-slate-800">No hay retos disponibles ahora</h3>
+                  <p className="text-slate-500 mt-1">Sigue mejorando tu perfil, ¡pronto encontrarás nuevos desafíos!</p>
+                </div>
+              ) : (
+                <div className="grid gap-6">
+                  {aspirationalMatches.map((job) => (
+                    <div key={job.job_id} className="bg-white rounded-2xl border border-slate-100 p-6 overflow-hidden relative hover:shadow-xl transition-all group">
+                      <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
+                        <Target className="w-32 h-32" />
+                      </div>
+                      
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                        <div className="flex-1 space-y-4">
+                          <div className="flex items-center gap-3">
+                            <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-full flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5" />
+                              Empleo Aspiracional
+                            </span>
+                            <span className="text-slate-400 text-sm">{job.location || 'Remoto'}</span>
+                          </div>
+                          
+                          <div>
+                            <h3 className="text-xl font-bold text-slate-900 group-hover:text-indigo-700 transition-colors">
+                              {job.title}
+                            </h3>
+                            <p className="text-slate-500 mt-1">Salario de hasta: <strong className="text-slate-800">${job.job_salary_max?.toLocaleString('es-CO')} COP</strong></p>
+                          </div>
+
+                          {job.missing_skills && job.missing_skills.length > 0 && (
+                            <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4 mt-4 inline-block w-full">
+                              <p className="text-sm font-semibold text-amber-800 mb-2 flex items-center gap-1.5">
+                                <AlertCircle className="w-4 h-4" />
+                                Habilidades Faltantes (Tu próximo reto):
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {job.missing_skills.map((skill, idx) => (
+                                  <span key={idx} className="bg-white border border-amber-200 text-amber-700 px-2.5 py-1 rounded-md text-xs font-semibold shadow-sm">
+                                    {skill}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col items-end justify-center shrink-0">
+                          <div className="text-right mb-4">
+                            <p className="text-sm text-slate-500">Posible Match</p>
+                            <p className="text-3xl font-bold text-slate-800">{Math.round(job.match_score)}%</p>
+                          </div>
+
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {activeTab === "applications" && (
             <div className="space-y-6">
