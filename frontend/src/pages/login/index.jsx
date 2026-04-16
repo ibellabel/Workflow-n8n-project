@@ -72,7 +72,7 @@ export default function LoginPage() {
           </div>
 
           <div className={`mt-12 text-slate-500 text-sm font-medium transform transition-all duration-700 delay-700 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
-            © {new Date().getFullYear()} Magneto AI • El poder del talento
+            © {new Date().getFullYear()} Hire Match • El poder del talento
           </div>
         </div>
       </div>

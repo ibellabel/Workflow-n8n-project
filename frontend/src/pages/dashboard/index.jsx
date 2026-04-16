@@ -4,8 +4,13 @@ import { Briefcase, Target, ClipboardList, LayoutDashboard, LogOut, Sparkles, Ch
 import { supabase } from "../../lib/supabaseClient";
 
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState("applications");
+  const [activeTab, setActiveTab] = useState("hire-match");
   const [applications, setApplications] = useState([]);
+
+  // Top Matches state
+  const [topMatches, setTopMatches] = useState([]);
+  const [isLoadingTopMatches, setIsLoadingTopMatches] = useState(false);
+  const [topMatchesError, setTopMatchesError] = useState(null);
 
   // Aspirational Match state
   const [aspirationalMatches, setAspirationalMatches] = useState([]);
@@ -56,8 +61,25 @@ export default function DashboardPage() {
       }
     };
 
+    const fetchTopMatches = async () => {
+      setIsLoadingTopMatches(true);
+      setTopMatchesError(null);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const candidateId = user?.id || "55555555-5555-5555-5555-555555555555";
+        const res = await axios.get(`http://localhost:3001/api/top-matches?candidate_id=${candidateId}`);
+        setTopMatches(res.data.top_matches || []);
+      } catch (err) {
+        console.error("Error fetching top matches:", err);
+        setTopMatchesError(err?.response?.data?.error || "Error al cargar matches");
+      } finally {
+        setIsLoadingTopMatches(false);
+      }
+    };
+
     fetchApplications();
     fetchAspirational();
+    fetchTopMatches();
   }, []);
 
   const windows = [
@@ -76,7 +98,7 @@ export default function DashboardPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
               <LayoutDashboard size={18} />
             </div>
-            <span className="font-bold text-slate-800">Magneto App</span>
+            <span className="font-bold text-slate-800">Hire Match</span>
           </div>
         </div>
 
@@ -123,6 +145,77 @@ export default function DashboardPage() {
         </header>
 
         <div className="flex-1 overflow-auto p-6 bg-slate-50">
+
+          {activeTab === "hire-match" && (
+            <div className="max-w-4xl mx-auto space-y-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                  <Briefcase className="text-white w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">Top Matches</h2>
+                  <p className="text-slate-500">
+                    Las vacantes más compatibles con tu perfil y habilidades
+                  </p>
+                </div>
+              </div>
+
+              {isLoadingTopMatches ? (
+                <div className="flex justify-center p-12">
+                  <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+                </div>
+              ) : topMatchesError ? (
+                <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 shrink-0" />
+                  <p>{topMatchesError}</p>
+                </div>
+              ) : topMatches.length === 0 ? (
+                <div className="bg-white p-12 rounded-2xl text-center border border-slate-100">
+                  <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-slate-800">No hay matches disponibles</h3>
+                  <p className="text-slate-500 mt-1">Sigue mejorando tu perfil para conectar con oportunidades.</p>
+                </div>
+              ) : (
+                <div className="grid gap-6">
+                  {topMatches.map((job) => (
+                    <div key={job.job_id} className="bg-white rounded-2xl border border-slate-100 p-6 overflow-hidden relative hover:shadow-xl transition-all group">
+                      
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                        <div className="flex-1 space-y-4">
+                          <div className="flex items-center gap-3">
+                            <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-full flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              Match Exitoso
+                            </span>
+                            <span className="text-slate-400 text-sm">{job.location || 'Remoto'}</span>
+                          </div>
+                          
+                          <div>
+                            <h3 className="text-xl font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                              {job.title}
+                            </h3>
+                          </div>
+
+                          {job.match_reason && (
+                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mt-4 inline-block w-full text-slate-600 text-sm">
+                              {job.match_reason}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col items-end justify-center shrink-0">
+                          <div className="text-right mb-4">
+                            <p className="text-sm text-slate-500">Compatibilidad</p>
+                            <p className="text-3xl font-bold text-emerald-600">{Math.round(job.match_score)}%</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {activeTab === "aspirations" && (
             <div className="max-w-4xl mx-auto space-y-6">
