@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Briefcase, Target, ClipboardList, LayoutDashboard, LogOut, Sparkles, ChevronRight, TrendingUp, CheckCircle2, AlertCircle } from "lucide-react";
+import { Briefcase, Target, ClipboardList, LayoutDashboard, LogOut, Sparkles, ChevronRight, TrendingUp, CheckCircle2, AlertCircle, UploadCloud } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function DashboardPage() {
@@ -16,6 +16,13 @@ export default function DashboardPage() {
   const [aspirationalMatches, setAspirationalMatches] = useState([]);
   const [isLoadingAspirations, setIsLoadingAspirations] = useState(false);
   const [aspirationsError, setAspirationsError] = useState(null);
+
+  // CV Upload state
+  const [cvFile, setCvFile] = useState(null);
+  const [cvSalary, setCvSalary] = useState('');
+  const [cvWorkPreference, setCvWorkPreference] = useState('Remoto');
+  const [isUploadingCv, setIsUploadingCv] = useState(false);
+  const [uploadCvStatus, setUploadCvStatus] = useState(null);
 
   useEffect(() => {
     const fetchApplications = async () => {
@@ -85,8 +92,44 @@ export default function DashboardPage() {
   const windows = [
     { id: "hire-match", name: "Hire match", icon: Briefcase },
     { id: "aspirations", name: "Aspiraciones", icon: Target },
-    { id: "applications", name: "Mis postulaciones", icon: ClipboardList }
+    { id: "applications", name: "Mis postulaciones", icon: ClipboardList },
+    { id: "upload-cv", name: "Analizar CV", icon: UploadCloud }
   ];
+
+  const handleUploadCv = async (e) => {
+    e.preventDefault();
+    if (!cvFile || !cvSalary || !cvWorkPreference) return;
+
+    setIsUploadingCv(true);
+    setUploadCvStatus(null);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const candidateId = user?.id || "55555555-5555-5555-5555-555555555555";
+
+      const formData = new FormData();
+      formData.append("candidate_id", candidateId);
+      formData.append("salary", cvSalary);
+      formData.append("work_preference", cvWorkPreference);
+      formData.append("cv", cvFile);
+
+      const res = await axios.post("http://localhost:3001/api/upload-cv", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data"
+        }
+      });
+
+      setUploadCvStatus({ type: "success", message: res.data.message || "CV analizado exitosamente!" });
+      setCvFile(null);
+      setCvSalary("");
+      setCvWorkPreference("Remoto");
+    } catch (error) {
+      console.error("Error uploading CV:", error);
+      setUploadCvStatus({ type: "error", message: error.response?.data?.error || "Ocurrió un error al analizar el CV." });
+    } finally {
+      setIsUploadingCv(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
@@ -424,6 +467,95 @@ export default function DashboardPage() {
                 })}
               </div>
 
+            </div>
+          )}
+
+          {activeTab === "upload-cv" && (
+            <div className="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg">
+                  <UploadCloud size={24} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-800">Analizar mi CV</h2>
+                  <p className="text-slate-500">Sube tu hoja de vida para activar el onboarding inteligente con N8N</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleUploadCv} className="space-y-6">
+                {uploadCvStatus && (
+                  <div className={`p-4 rounded-xl flex items-center gap-3 ${uploadCvStatus.type === 'error' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
+                    {uploadCvStatus.type === 'error' ? <AlertCircle className="w-5 h-5 shrink-0" /> : <CheckCircle2 className="w-5 h-5 shrink-0" />}
+                    <p>{uploadCvStatus.message}</p>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-700">Archivo CV (PDF)</label>
+                  <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:bg-slate-50 transition-colors">
+                    <input 
+                      type="file" 
+                      accept=".pdf"
+                      onChange={(e) => setCvFile(e.target.files[0])}
+                      className="hidden" 
+                      id="cv-upload"
+                      required
+                    />
+                    <label htmlFor="cv-upload" className="cursor-pointer flex flex-col items-center gap-2">
+                      <UploadCloud className="w-10 h-10 text-slate-400" />
+                      <span className="text-sm text-slate-600 font-medium">
+                        {cvFile ? cvFile.name : "Haz clic para seleccionar tu CV (solo PDF)"}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-slate-700">Expectativa Salarial (COP)</label>
+                    <input 
+                      type="number" 
+                      value={cvSalary}
+                      onChange={(e) => setCvSalary(e.target.value)}
+                      placeholder="Ej. 5000000"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-slate-700">Preferencia de Trabajo</label>
+                    <select 
+                      value={cvWorkPreference}
+                      onChange={(e) => setCvWorkPreference(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-white"
+                      required
+                    >
+                      <option value="Remoto">Remoto</option>
+                      <option value="Presencial">Presencial</option>
+                      <option value="Híbrido">Híbrido</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button 
+                  type="submit" 
+                  disabled={isUploadingCv || !cvFile}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isUploadingCv ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Procesando con N8N...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5" />
+                      Analizar Perfil
+                    </>
+                  )}
+                </button>
+              </form>
             </div>
           )}
 

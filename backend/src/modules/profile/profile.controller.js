@@ -27,13 +27,17 @@ exports.getApplications = async (req, res) => {
 
 exports.scoreProfile = async (req, res) => {
     try {
-        const { id, skills, expected_salary_cop, experience_years, location_city } = req.body;
+        const { id, skills, expected_salary_cop, experience_years, location_city, work_preference, work_preferences } = req.body;
         
         if (!skills || !expected_salary_cop) {
             return res.status(400).json({ error: "Faltan datos requeridos (skills, expected_salary_cop)" });
         }
 
-        const result = await profileService.calculateScore({ id, skills, expected_salary_cop, experience_years, location_city });
+        const wp = work_preferences || work_preference;
+
+        const result = await profileService.calculateScore({ 
+            id, skills, expected_salary_cop, experience_years, location_city, work_preference: wp 
+        });
         
         res.json({
             profile_score: result.score,
@@ -48,7 +52,7 @@ exports.scoreProfile = async (req, res) => {
 
 exports.uploadCV = async (req, res) => {
     try {
-        const { candidate_id, salary, city } = req.body;
+        const { candidate_id, salary, work_preference } = req.body;
         const file = req.file;
 
         if (!candidate_id || !file) {
@@ -58,7 +62,7 @@ exports.uploadCV = async (req, res) => {
         console.log(`[Upload CV] Recibido CV de candidate_id: ${candidate_id}, size: ${file.size} bytes`);
 
         try {
-            const responseData = await profileService.triggerUploadCvWebhook(candidate_id, salary, city, file);
+            const responseData = await profileService.triggerUploadCvWebhook(candidate_id, salary, work_preference, file);
             res.json({ message: "CV subido y procesado por n8n exitosamente", response: responseData });
         } catch (webhookError) {
              console.error("Error al notificar a n8n:", webhookError.message);

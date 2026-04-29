@@ -24,11 +24,34 @@ class ProfileModel {
         return res.rows;
     }
 
-    async updateProfileScore(id, score, feedbackStr) {
-        await db.query(
-            `UPDATE candidate_profiles SET profile_score = $1, feedback_notes = $2 WHERE id = $3`,
-            [score, feedbackStr, id]
-        );
+    async updateProfileData(id, score, feedbackStr, updates) {
+        const { expected_salary_cop, location_city, work_preferences, parsed_cv_data } = updates;
+        
+        let query = `UPDATE candidate_profiles SET profile_score = $1, feedback_notes = $2`;
+        let values = [score, feedbackStr];
+        let paramIndex = 3;
+
+        if (expected_salary_cop !== undefined) {
+            query += `, expected_salary_cop = $${paramIndex++}`;
+            values.push(expected_salary_cop);
+        }
+        if (location_city !== undefined) {
+            query += `, location_city = $${paramIndex++}`;
+            values.push(location_city);
+        }
+        if (work_preferences !== undefined) {
+            query += `, work_preferences = $${paramIndex++}`;
+            values.push(typeof work_preferences === 'string' ? JSON.stringify(work_preferences) : work_preferences);
+        }
+        if (parsed_cv_data !== undefined) {
+            query += `, parsed_cv_data = $${paramIndex++}`;
+            values.push(parsed_cv_data);
+        }
+
+        query += `, updated_at = NOW() WHERE id = $${paramIndex}`;
+        values.push(id);
+
+        await db.query(query, values);
     }
 
     async insertAuditLog(action, candidateId, details) {
