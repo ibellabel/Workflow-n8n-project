@@ -1,0 +1,256 @@
+{
+  "name": "2. Match & Postulación Automática",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "76d8591e-3ea6-4ed8-ac0d-5bc3ced1c05d",
+      "name": "Schedule (8:00 AM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        460,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, full_name, expected_salary_cop, parsed_cv_data FROM candidate_profiles",
+        "options": {}
+      },
+      "id": "d040ed55-e7a9-46f9-bb0b-3652eac1af6c",
+      "name": "Get Candidates (Supabase)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        680,
+        340
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "CREDENTIAL_ID_HERE",
+          "name": "Supabase Magneto"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "c86a34ba-e0ef-4f24-aa7b-722a4d3392a9",
+      "name": "Loop Candidates",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [
+        900,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3001/api/match-jobs",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "candidate_id",
+              "value": "={{ $json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8489728b-b8f4-4ea0-b184-eb013ec58032",
+      "name": "Match API (NodeJS)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1120,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.matches.length > 0 }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "18c21359-0db9-4cf7-8d9f-ff78cb18daca",
+      "name": "Has Matches?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "matches",
+        "options": {}
+      },
+      "id": "2af71af1-ccec-4d37-afad-542bc60dd206",
+      "name": "Item Lists",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 3,
+      "position": [
+        1560,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schemaName": "public",
+        "table": "applications",
+        "columns": "candidate_id,job_id,match_score,status",
+        "options": {}
+      },
+      "id": "b3e32e8b-d721-4ea2-b605-e366fd9d6d1d",
+      "name": "Insert Application",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        1780,
+        220
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "CREDENTIAL_ID_HERE",
+          "name": "Supabase Magneto"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "=¡Hola {{ $('Loop Candidates').item.json.full_name }}! Magneto te ha conseguido una postulacion a la vacante: {{ $json.title }}.",
+        "options": {}
+      },
+      "id": "06059d60-70f2-43d9-a517-76de32f9ae1d",
+      "name": "Email Notification Mock",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        220
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule (8:00 AM)": {
+      "main": [
+        [
+          {
+            "node": "Get Candidates (Supabase)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Candidates (Supabase)": {
+      "main": [
+        [
+          {
+            "node": "Loop Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Candidates": {
+      "main": [
+        [
+          {
+            "node": "Match API (NodeJS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match API (NodeJS)": {
+      "main": [
+        [
+          {
+            "node": "Has Matches?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Matches?": {
+      "main": [
+        [
+          {
+            "node": "Item Lists",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Item Lists": {
+      "main": [
+        [
+          {
+            "node": "Insert Application",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Application": {
+      "main": [
+        [
+          {
+            "node": "Email Notification Mock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Notification Mock": {
+      "main": [
+        [
+          {
+            "node": "Loop Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

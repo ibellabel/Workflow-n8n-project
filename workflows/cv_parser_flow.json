@@ -1,0 +1,176 @@
+{
+  "name": "Flujo 1: Onboarding Inteligente (CV Parser)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cv-upload",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e43b123d-ce69-455b-8f19-3dbfe4a2fbcc",
+      "name": "Webhook (Recibe CV)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "9fcd23b1-4d32-47ef-b695-123456789abc"
+    },
+    {
+      "parameters": {
+        "operation": "extract",
+        "binaryPropertyName": "cv",
+        "options": {}
+      },
+      "id": "4e78a631-9a74-4cc9-b88a-360655db2291",
+      "name": "Extraer Texto de PDF",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Eres un reclutador experto IT de la plataforma Magneto. Extrae del texto proporcionado las Habilidades principales, Educación, y Rol sugerido. \n\nDevuélvelo SOLO en un bloque JSON válido con la siguiente estructura y sin Markdown:\n{\n  \"skills\": [\"React\", \"Node.js\", \"AWS\"],\n  \"role\": \"Fullstack Developer\",\n  \"education\": \"Ingeniería de Sistemas\"\n}\n\nTexto de la Hoja de Vida:\n{{ $json.text ? $json.text.substring(0, 3000) : '' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d8c0b89b-f111-477d-8153-659f8a3c899c",
+      "name": "Analizar CV (OpenAI)",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        700,
+        300
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "1",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResponse = JSON.parse(items[0].json.message.content);\nconst webhookData = $('Webhook (Recibe CV)').first().json.body;\n\n// Mapeamos el score random por ahora desde el LLM\nconst score = Math.floor(Math.random() * (99 - 85 + 1) + 85); \n\nreturn [\n  {\n    json: {\n      candidate_id: webhookData.candidate_id,\n      expected_salary_cop: webhookData.expected_salary_cop,\n      location_city: webhookData.city,\n      parsed_cv_data: {\n        skills: aiResponse.skills,\n        role: aiResponse.role,\n        education: aiResponse.education\n      },\n      profile_score: score\n    }\n  }\n];"
+      },
+      "id": "ab75b221-ec2d-42ac-bf57-19aa8e348df8",
+      "name": "Transformar Data JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": "public",
+        "table": "candidate_profiles",
+        "updateKey": "id",
+        "columns": "expected_salary_cop,location_city,parsed_cv_data,profile_score",
+        "options": {}
+      },
+      "id": "c882a17f-1d4a-4abf-9b2f-987dcafece44",
+      "name": "Actualizar DB (PostgreSQL)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [
+        1140,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "2",
+          "name": "Postgres Magneto"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"message\": \"CV Analizado por IA correctamente\",\n  \"candidate_id\": \"{{ $json.candidate_id }}\",\n  \"score\": {{ $json.profile_score }}\n}",
+        "options": {}
+      },
+      "id": "0ac9adff-f446-4a6c-94b7-ca922dcdfb28",
+      "name": "Responder a Frontend",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Recibe CV)": {
+      "main": [
+        [
+          {
+            "node": "Extraer Texto de PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer Texto de PDF": {
+      "main": [
+        [
+          {
+            "node": "Analizar CV (OpenAI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analizar CV (OpenAI)": {
+      "main": [
+        [
+          {
+            "node": "Transformar Data JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transformar Data JSON": {
+      "main": [
+        [
+          {
+            "node": "Actualizar DB (PostgreSQL)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar DB (PostgreSQL)": {
+      "main": [
+        [
+          {
+            "node": "Responder a Frontend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "tags": []
+}
