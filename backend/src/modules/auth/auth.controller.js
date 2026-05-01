@@ -37,6 +37,7 @@ exports.login = async (req, res) => {
                 id: user.id,
                 email: user.email,
                 role: user.role,
+                company_id: user.role === 'COMPANY' ? user.id : null,
                 candidate_id: profileData ? profileData.id : null, 
                 full_name: profileData ? profileData.full_name : null,
             }

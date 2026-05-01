@@ -31,6 +31,7 @@ export const LoginForm = () => {
       }
 
       setSuccess(true);
+      localStorage.setItem("hire_match_session", JSON.stringify(data.user));
       console.log("DB Login Success:", data);
       
       setTimeout(() => {

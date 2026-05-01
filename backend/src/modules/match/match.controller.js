@@ -59,6 +59,19 @@ exports.getStats = async (req, res) => {
     }
 };
 
+exports.getCandidateApplications = async (req, res) => {
+    try {
+        const { candidate_id } = req.query;
+        if (!candidate_id) return res.status(400).json({ error: "Falta candidate_id en los parámetros." });
+
+        const applications = await matchModel.getCandidateApplications(candidate_id);
+        res.json({ candidate_id, applications });
+    } catch (error) {
+        console.error("Error en getCandidateApplications controller:", error);
+        res.status(500).json({ error: "Error interno al obtener postulaciones del candidato." });
+    }
+};
+
 exports.getAspirationalMatches = async (req, res) => {
     try {
         const { candidate_id } = req.query;

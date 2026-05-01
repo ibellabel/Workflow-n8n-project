@@ -1,13 +1,12 @@
 import { useState } from "react";
 import axios from "axios";
-import { supabase } from "../../../../lib/supabaseClient";
-import { UploadCloud, CheckCircle2, AlertCircle, Loader2, DollarSign, MapPin, Briefcase } from "lucide-react";
+import { UploadCloud, CheckCircle2, AlertCircle, Loader2, DollarSign, Briefcase } from "lucide-react";
 
 export const CVUploadForm = ({ onUploadSuccess }) => {
   const [file, setFile] = useState(null);
   const [expectedSalary, setExpectedSalary] = useState("");
   const [modality, setModality] = useState("Remoto");
-  const [city, setCity] = useState("Bogotá"); // Ciudad por defecto si se requiere en el form, aunque la extraerá el CV
+  const [city] = useState("Bogotá"); // Ciudad por defecto si se requiere en el form, aunque la extraerá el CV
   
   const [status, setStatus] = useState("idle"); // idle, loading, success, error
   const [errorMessage, setErrorMessage] = useState("");
@@ -30,8 +29,12 @@ export const CVUploadForm = ({ onUploadSuccess }) => {
       setStatus("loading");
       setErrorMessage("");
 
-      const { data: { user } } = await supabase.auth.getUser();
-      const candidateId = user?.id || "55555555-5555-5555-5555-555555555555";
+      const session = JSON.parse(localStorage.getItem("hire_match_session"));
+      const candidateId = session?.candidate_id;
+
+      if (!candidateId) {
+        throw new Error("No hay un perfil de candidato asociado a esta sesión.");
+      }
 
       const formData = new FormData();
       formData.append("cv", file);
@@ -40,7 +43,7 @@ export const CVUploadForm = ({ onUploadSuccess }) => {
       formData.append("city", city); 
       formData.append("modality", modality);
 
-      const response = await axios.post("http://localhost:3001/api/upload-cv", formData, {
+      await axios.post("http://localhost:3001/api/upload-cv", formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
 
@@ -50,7 +53,7 @@ export const CVUploadForm = ({ onUploadSuccess }) => {
     } catch (error) {
       console.error("Error uploading CV:", error);
       setStatus("error");
-      setErrorMessage(error?.response?.data?.error || "Ocurrió un error al subir el CV.");
+      setErrorMessage(error?.response?.data?.error || error.message || "Ocurrió un error al subir el CV.");
     }
   };
 

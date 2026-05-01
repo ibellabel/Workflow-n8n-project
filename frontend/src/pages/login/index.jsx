@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Check, Sparkles } from "lucide-react";
 import { Logo } from "./components/Logo";
 import { LoginForm } from "./components/LoginForm";
@@ -8,11 +8,7 @@ import { ScorePreviewCard } from "./components/ScorePreviewCard";
 
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState("login");
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const [mounted] = useState(true);
 
   return (
      <div className="min-h-screen flex flex-col lg:flex-row bg-slate-50 font-sans selection:bg-indigo-500 selection:text-white">
