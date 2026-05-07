@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+=======
+import { useState } from "react";
+>>>>>>> origin/Diego
 import { Check, Sparkles } from "lucide-react";
 import { Logo } from "./components/Logo";
 import { LoginForm } from "./components/LoginForm";
@@ -10,6 +14,7 @@ import { supabase } from "../../lib/supabaseClient";
 
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState("login");
+<<<<<<< HEAD
   const [mounted, setMounted] = useState(false);
 
   const navigate = useNavigate();
@@ -17,6 +22,9 @@ export default function LoginPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+=======
+  const [mounted] = useState(true);
+>>>>>>> origin/Diego
 
   // LOGIN
   const handleLogin = async (data) => {
@@ -204,6 +212,7 @@ export default function LoginPage() {
             </div>
           </div>
 
+<<<<<<< HEAD
           <div
             className={`mt-12 text-slate-500 text-sm font-medium transform transition-all duration-700 delay-700 ${
               mounted
@@ -212,6 +221,10 @@ export default function LoginPage() {
             }`}
           >
             © {new Date().getFullYear()} Magneto AI • El poder del talento
+=======
+          <div className={`mt-12 text-slate-500 text-sm font-medium transform transition-all duration-700 delay-700 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+            © {new Date().getFullYear()} Hire Match • El poder del talento
+>>>>>>> origin/Diego
           </div>
         </div>
       </div>

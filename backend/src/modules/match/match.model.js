@@ -49,6 +49,27 @@ class MatchModel {
         const result = await db.query(query, [candidateId]);
         return result.rows;
     }
+
+    async getCandidateApplications(candidateId) {
+        const query = `
+            SELECT
+                a.id,
+                a.status,
+                a.match_score,
+                a.updated_at,
+                j.id as job_id,
+                j.title,
+                j.location,
+                u.email as company_email
+            FROM applications a
+            JOIN jobs j ON a.job_id = j.id
+            LEFT JOIN users u ON j.company_id = u.id
+            WHERE a.candidate_id = $1
+            ORDER BY a.updated_at DESC NULLS LAST, a.match_score DESC NULLS LAST
+        `;
+        const result = await db.query(query, [candidateId]);
+        return result.rows;
+    }
 }
 
 module.exports = new MatchModel();

@@ -1,166 +1,347 @@
-import { useState } from "react";
-import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Check, Sparkles } from "lucide-react";
+import { Logo } from "./components/Logo";
+import { LoginForm } from "./components/LoginForm";
+import { RegisterForm } from "./components/RegisterForm";
+import { CompanyRegisterForm } from "./components/CompanyRegisterForm";
+import { ScorePreviewCard } from "./components/ScorePreviewCard";
+import { supabase } from "../../lib/supabaseClient";
 
-export const LoginForm = ({ onSubmit }) => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+export default function LoginPage() {
+  const [activeTab, setActiveTab] = useState("login");
+  const [mounted, setMounted] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const navigate = useNavigate();
 
-    setIsLoading(true);
-    setError(null);
-    setSuccess(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-    try {
-      await onSubmit({
-        email,
-        password,
-      });
+  // LOGIN
+  const handleLogin = async (data) => {
+    const { email, password } = data;
 
-      setSuccess(true);
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-    } catch (err) {
-      setError(err.message || "Error al iniciar sesión");
-    } finally {
-      setIsLoading(false);
+    if (error) {
+      throw new Error("Credenciales inválidas");
+    }
+
+    const userId = authData.user.id;
+
+    const { data: userData } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", userId)
+      .single();
+
+    if (userData?.role === "COMPANY") {
+      navigate("/company-dashboard");
+    } else {
+      navigate("/dashboard");
     }
   };
 
+  // REGISTRO USUARIO
+  const handleRegister = async (data) => {
+    const { fullName, email, password } = data;
+
+    const { data: authData, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    const user = authData.user;
+
+    if (user) {
+      await supabase.from("users").insert([
+        {
+          id: user.id,
+          email,
+          role: "CANDIDATE",
+          is_active: true,
+        },
+      ]);
+
+      await supabase.from("candidate_profiles").insert([
+        {
+          user_id: user.id,
+          full_name: fullName,
+        },
+      ]);
+    }
+
+    alert("Usuario registrado correctamente");
+    setActiveTab("login");
+  };
+
+  // REGISTRO EMPRESA
+  const handleCompanyRegister = async (data) => {
+    const {
+      companyName,
+      email,
+      password,
+      nit,
+      headquarters,
+    } = data;
+
+    const { data: authData, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const user = authData.user;
+
+    if (user) {
+      await supabase.from("users").insert([
+        {
+          id: user.id,
+          email,
+          role: "COMPANY",
+          is_active: true,
+        },
+      ]);
+
+      await supabase.from("companies").insert([
+        {
+          user_id: user.id,
+          company_name: companyName,
+          nit: nit,
+          headquarters: headquarters,
+        },
+      ]);
+    }
+
+    alert("Empresa registrada correctamente");
+    setActiveTab("login");
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      {error && (
-        <div className="animate-in slide-in-from-top-2 p-3.5 bg-red-50/80 backdrop-blur-sm text-red-700 rounded-xl text-sm border border-red-100 flex items-start gap-2.5 shadow-sm">
-          <svg
-            className="w-5 h-5 flex-shrink-0 text-red-500 mt-0.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
+    <div className="min-h-screen flex flex-col lg:flex-row bg-slate-50 font-sans selection:bg-indigo-500 selection:text-white">
 
-          <span className="font-medium text-red-800">
-            {error}
-          </span>
+      {/* LEFT PANEL */}
+      <div className="lg:w-5/12 relative overflow-hidden flex flex-col justify-between bg-gradient-to-br from-[#0a192f] via-[#112240] to-[#233554] shadow-2xl z-10">
+
+        {/* Background */}
+        <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-96 h-96 bg-indigo-500/20 rounded-full blur-[100px] pointer-events-none"></div>
+
+        <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/3 w-96 h-96 bg-blue-500/20 rounded-full blur-[100px] pointer-events-none"></div>
+
+        {/* Mobile Header */}
+        <div className="lg:hidden flex items-center justify-center p-6 bg-white/5 backdrop-blur-md border-b border-white/10">
+          <Logo variant="compact" />
         </div>
-      )}
 
-      {success && (
-        <div className="animate-in slide-in-from-top-2 p-3.5 bg-green-50/80 backdrop-blur-sm text-green-800 rounded-xl text-sm border border-green-200 flex items-center shadow-sm">
-          <div className="mr-3 p-1 bg-green-100 rounded-full text-green-600">
-            <CheckIcon className="w-4 h-4" />
+        {/* Desktop */}
+        <div className="hidden lg:flex flex-col h-full p-12 lg:p-16 relative z-10 w-full max-w-xl mx-auto">
+
+          {/* Logo */}
+          <div
+            className={`mb-16 transform transition-all duration-1000 ${
+              mounted
+                ? "translate-y-0 opacity-100"
+                : "-translate-y-8 opacity-0"
+            }`}
+          >
+            <Logo />
           </div>
 
-          <span className="font-bold tracking-tight">
-            ¡Ingreso exitoso! Preparando tu dashboard...
-          </span>
-        </div>
-      )}
+          {/* Hero */}
+          <div className="flex-1 flex flex-col justify-center">
 
-      <div className="group">
-        <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1 uppercase tracking-wider transition-colors group-focus-within:text-indigo-600">
-          Correo electrónico
-        </label>
+            <div
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-indigo-300 text-xs font-semibold w-fit mb-6 backdrop-blur-sm transform transition-all duration-700 delay-100 ${
+                mounted
+                  ? "translate-y-0 opacity-100"
+                  : "translate-y-8 opacity-0"
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              IA de Próxima Generación
+            </div>
 
-        <div className="relative">
-          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5 transition-colors group-focus-within:text-indigo-500 pointer-events-none" />
+            <h1
+              className={`text-white mb-8 text-4xl xl:text-5xl font-extrabold tracking-tight leading-[1.1] transform transition-all duration-700 delay-200 ${
+                mounted
+                  ? "translate-y-0 opacity-100"
+                  : "translate-y-8 opacity-0"
+              }`}
+            >
+              Impulsa tu carrera al{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">
+                siguiente nivel
+              </span>
+            </h1>
 
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 rounded-xl border-2 border-slate-200/60 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-slate-900 bg-slate-50/50 hover:bg-slate-50 transition-all font-medium"
-            placeholder="tu@correo.com"
-          />
+            {/* Features */}
+            <div
+              className={`space-y-6 mb-12 transform transition-all duration-700 delay-300 ${
+                mounted
+                  ? "translate-y-0 opacity-100"
+                  : "translate-y-8 opacity-0"
+              }`}
+            >
+              {[
+                "Análisis semántico de tu CV",
+                "Recomendaciones hyper-personalizadas",
+                "Conexión directa con empresas Top",
+              ].map((feature, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-4 group"
+                >
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-500/40 transition-all duration-300">
+                    <Check
+                      className="w-4 h-4 text-indigo-300"
+                      strokeWidth={2.5}
+                    />
+                  </div>
+
+                  <p className="text-slate-300 text-lg font-medium group-hover:text-white transition-colors duration-300">
+                    {feature}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Card */}
+            <div
+              className={`transform transition-all duration-1000 delay-500 hover:scale-[1.02] ${
+                mounted
+                  ? "translate-y-0 opacity-100"
+                  : "translate-y-12 opacity-0"
+              }`}
+            >
+              <div className="animate-float">
+                <ScorePreviewCard />
+              </div>
+            </div>
+          </div>
+
+          <div
+            className={`mt-12 text-slate-500 text-sm font-medium transform transition-all duration-700 delay-700 ${
+              mounted
+                ? "translate-y-0 opacity-100"
+                : "translate-y-4 opacity-0"
+            }`}
+          >
+            © {new Date().getFullYear()} Magneto AI • El poder del talento
+          </div>
         </div>
       </div>
 
-      <div className="group">
-        <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1 flex justify-between uppercase tracking-wider transition-colors group-focus-within:text-indigo-600">
-          <span>Contraseña</span>
+      {/* RIGHT PANEL */}
+      <div className="lg:w-7/12 flex-1 flex items-center justify-center p-6 lg:p-12 relative">
 
-          <a
-            href="#"
-            className="text-indigo-600 hover:text-indigo-700 text-[11px] normal-case tracking-normal"
-          >
-            ¿La olvidaste?
-          </a>
-        </label>
+        {/* Blobs */}
+        <div className="absolute top-20 right-20 w-64 h-64 bg-indigo-100 rounded-full blur-[80px] opacity-60 pointer-events-none"></div>
 
-        <div className="relative">
-          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5 transition-colors group-focus-within:text-indigo-500 pointer-events-none" />
+        <div className="absolute bottom-20 left-20 w-64 h-64 bg-cyan-100 rounded-full blur-[80px] opacity-60 pointer-events-none"></div>
 
-          <input
-            type={showPassword ? "text" : "password"}
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full pl-11 pr-12 py-3 rounded-xl border-2 border-slate-200/60 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-slate-900 bg-slate-50/50 hover:bg-slate-50 transition-all font-medium"
-            placeholder="••••••••"
-          />
+        <div
+          className={`w-full max-w-md relative z-10 transition-all duration-700 transform ${
+            mounted
+              ? "translate-x-0 opacity-100"
+              : "translate-x-8 opacity-0"
+          }`}
+        >
+          <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 lg:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
 
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors bg-transparent border-none p-1 focus:outline-none"
-            aria-label={
-              showPassword
-                ? "Ocultar contraseña"
-                : "Mostrar contraseña"
-            }
-          >
-            {showPassword ? (
-              <EyeOff className="w-5 h-5" />
-            ) : (
-              <Eye className="w-5 h-5" />
+            {/* Title */}
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+                Bienvenido de vuelta
+              </h2>
+
+              <p className="text-sm text-slate-500 mt-2">
+                Ingresa tus datos para acceder a tu dashboard
+              </p>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-2 p-1.5 rounded-2xl bg-slate-100/80 mb-8 border border-slate-200/50">
+
+              <button
+                onClick={() => setActiveTab("login")}
+                className={`flex-1 h-11 rounded-xl text-sm font-bold transition-all duration-300 ${
+                  activeTab === "login"
+                    ? "bg-white text-indigo-600 shadow-sm ring-1 ring-black/5"
+                    : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                }`}
+              >
+                Inicia Sesión
+              </button>
+
+              <button
+                onClick={() => setActiveTab("register")}
+                className={`flex-1 h-11 rounded-xl text-sm font-bold transition-all duration-300 ${
+                  activeTab === "register"
+                    ? "bg-white text-indigo-600 shadow-sm ring-1 ring-black/5"
+                    : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                }`}
+              >
+                Crea tu Cuenta
+              </button>
+            </div>
+
+            {/* Forms */}
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+
+              {activeTab === "login" && (
+                <LoginForm onSubmit={handleLogin} />
+              )}
+
+              {activeTab === "register" && (
+                <RegisterForm onSubmit={handleRegister} />
+              )}
+
+              {activeTab === "company_register" && (
+                <CompanyRegisterForm
+                  onSubmit={handleCompanyRegister}
+                  onBack={() => setActiveTab("login")}
+                />
+              )}
+            </div>
+
+            {/* Footer */}
+            {activeTab !== "company_register" && (
+              <>
+                <div className="mt-8 flex items-center justify-center gap-4">
+                  <div className="h-px bg-slate-200 flex-1"></div>
+
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    O explora
+                  </span>
+
+                  <div className="h-px bg-slate-200 flex-1"></div>
+                </div>
+
+                <div className="mt-6">
+                  <button
+                    onClick={() => setActiveTab("company_register")}
+                    className="w-full h-11 flex items-center justify-center gap-2 rounded-xl text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all focus:ring-4 focus:ring-slate-100"
+                  >
+                    Regístrate como Empresa
+                  </button>
+                </div>
+              </>
             )}
-          </button>
+          </div>
         </div>
       </div>
-
-      <button
-        type="submit"
-        disabled={isLoading}
-        className="w-full bg-slate-900 hover:bg-indigo-600 text-white font-bold py-3.5 rounded-xl transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-500/30 flex justify-center items-center mt-8 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none delay-0"
-      >
-        {isLoading ? (
-          <div className="flex items-center gap-2">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            Verificando tú perfil...
-          </div>
-        ) : (
-          "Ingresar a Magneto"
-        )}
-      </button>
-    </form>
-  );
-};
-
-function CheckIcon(props) {
-  return (
-    <svg
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={3}
-      {...props}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M5 13l4 4L19 7"
-      />
-    </svg>
+    </div>
   );
 }
