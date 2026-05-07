@@ -1,9 +1,5 @@
-<<<<<<< HEAD
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-=======
-import { useState } from "react";
->>>>>>> origin/Diego
 import { Check, Sparkles } from "lucide-react";
 import { Logo } from "./components/Logo";
 import { LoginForm } from "./components/LoginForm";
@@ -14,7 +10,6 @@ import { supabase } from "../../lib/supabaseClient";
 
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState("login");
-<<<<<<< HEAD
   const [mounted, setMounted] = useState(false);
 
   const navigate = useNavigate();
@@ -22,15 +17,12 @@ export default function LoginPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
-=======
-  const [mounted] = useState(true);
->>>>>>> origin/Diego
 
   // LOGIN
   const handleLogin = async (data) => {
     const { email, password } = data;
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -39,7 +31,19 @@ export default function LoginPage() {
       throw new Error("Credenciales inválidas");
     }
 
-    navigate("/dashboard");
+    const userId = authData.user.id;
+
+    const { data: userData } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", userId)
+      .single();
+
+    if (userData?.role === "COMPANY") {
+      navigate("/company-dashboard");
+    } else {
+      navigate("/dashboard");
+    }
   };
 
   // REGISTRO USUARIO
@@ -82,7 +86,13 @@ export default function LoginPage() {
 
   // REGISTRO EMPRESA
   const handleCompanyRegister = async (data) => {
-    const { companyName, email, password } = data;
+    const {
+      companyName,
+      email,
+      password,
+      nit,
+      headquarters,
+    } = data;
 
     const { data: authData, error } = await supabase.auth.signUp({
       email,
@@ -105,6 +115,15 @@ export default function LoginPage() {
           is_active: true,
         },
       ]);
+
+      await supabase.from("companies").insert([
+        {
+          user_id: user.id,
+          company_name: companyName,
+          nit: nit,
+          headquarters: headquarters,
+        },
+      ]);
     }
 
     alert("Empresa registrada correctamente");
@@ -119,6 +138,7 @@ export default function LoginPage() {
 
         {/* Background */}
         <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-96 h-96 bg-indigo-500/20 rounded-full blur-[100px] pointer-events-none"></div>
+
         <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/3 w-96 h-96 bg-blue-500/20 rounded-full blur-[100px] pointer-events-none"></div>
 
         {/* Mobile Header */}
@@ -212,7 +232,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-<<<<<<< HEAD
           <div
             className={`mt-12 text-slate-500 text-sm font-medium transform transition-all duration-700 delay-700 ${
               mounted
@@ -221,10 +240,6 @@ export default function LoginPage() {
             }`}
           >
             © {new Date().getFullYear()} Magneto AI • El poder del talento
-=======
-          <div className={`mt-12 text-slate-500 text-sm font-medium transform transition-all duration-700 delay-700 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
-            © {new Date().getFullYear()} Hire Match • El poder del talento
->>>>>>> origin/Diego
           </div>
         </div>
       </div>
@@ -234,6 +249,7 @@ export default function LoginPage() {
 
         {/* Blobs */}
         <div className="absolute top-20 right-20 w-64 h-64 bg-indigo-100 rounded-full blur-[80px] opacity-60 pointer-events-none"></div>
+
         <div className="absolute bottom-20 left-20 w-64 h-64 bg-cyan-100 rounded-full blur-[80px] opacity-60 pointer-events-none"></div>
 
         <div
