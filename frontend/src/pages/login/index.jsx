@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Check, Sparkles } from "lucide-react";
 import { Logo } from "./components/Logo";
 import { LoginForm } from "./components/LoginForm";
@@ -12,8 +11,6 @@ export default function LoginPage() {
   const [activeTab, setActiveTab] = useState("login");
   const [mounted, setMounted] = useState(false);
 
-  const navigate = useNavigate();
-
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -22,10 +19,11 @@ export default function LoginPage() {
   const handleLogin = async (data) => {
     const { email, password } = data;
 
-    const { data: authData, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data: authData, error } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
     if (error) {
       throw new Error("Credenciales inválidas");
@@ -39,10 +37,23 @@ export default function LoginPage() {
       .eq("id", userId)
       .single();
 
-    if (userData?.role === "COMPANY") {
-      navigate("/company-dashboard");
+    const sessionData = {
+      id: userId,
+      role: userData?.role || "CANDIDATE",
+      candidate_id: userId,
+      company_id: userId,
+      email: authData.user.email,
+    };
+
+    localStorage.setItem(
+      "hire_match_session",
+      JSON.stringify(sessionData)
+    );
+
+    if (sessionData.role === "COMPANY") {
+      window.location.href = "/dashboard";
     } else {
-      navigate("/dashboard");
+      window.location.href = "/dashboard";
     }
   };
 
@@ -50,10 +61,11 @@ export default function LoginPage() {
   const handleRegister = async (data) => {
     const { fullName, email, password } = data;
 
-    const { data: authData, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    const { data: authData, error } =
+      await supabase.auth.signUp({
+        email,
+        password,
+      });
 
     if (error) {
       alert(error.message);
@@ -63,21 +75,34 @@ export default function LoginPage() {
     const user = authData.user;
 
     if (user) {
-      await supabase.from("users").insert([
-        {
-          id: user.id,
-          email,
-          role: "CANDIDATE",
-          is_active: true,
-        },
-      ]);
+      const { error: userInsertError } =
+        await supabase.from("users").insert([
+          {
+            id: user.id,
+            email,
+            password_hash: "supabase_auth",
+            role: "CANDIDATE",
+            is_active: true,
+          },
+        ]);
 
-      await supabase.from("candidate_profiles").insert([
-        {
-          user_id: user.id,
-          full_name: fullName,
-        },
-      ]);
+      if (userInsertError) {
+        alert(userInsertError.message);
+        return;
+      }
+
+      const { error: candidateInsertError } =
+        await supabase.from("candidate_profiles").insert([
+          {
+            user_id: user.id,
+            full_name: fullName,
+          },
+        ]);
+
+      if (candidateInsertError) {
+        alert(candidateInsertError.message);
+        return;
+      }
     }
 
     alert("Usuario registrado correctamente");
@@ -94,10 +119,11 @@ export default function LoginPage() {
       headquarters,
     } = data;
 
-    const { data: authData, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    const { data: authData, error } =
+      await supabase.auth.signUp({
+        email,
+        password,
+      });
 
     if (error) {
       alert(error.message);
@@ -107,23 +133,37 @@ export default function LoginPage() {
     const user = authData.user;
 
     if (user) {
-      await supabase.from("users").insert([
-        {
-          id: user.id,
-          email,
-          role: "COMPANY",
-          is_active: true,
-        },
-      ]);
 
-      await supabase.from("companies").insert([
-        {
-          user_id: user.id,
-          company_name: companyName,
-          nit: nit,
-          headquarters: headquarters,
-        },
-      ]);
+      const { error: userInsertError } =
+        await supabase.from("users").insert([
+          {
+            id: user.id,
+            email,
+            password_hash: "supabase_auth",
+            role: "COMPANY",
+            is_active: true,
+          },
+        ]);
+
+      if (userInsertError) {
+        alert(userInsertError.message);
+        return;
+      }
+
+      const { error: companyInsertError } =
+        await supabase.from("companies").insert([
+          {
+            user_id: user.id,
+            company_name: companyName,
+            nit,
+            headquarters,
+          },
+        ]);
+
+      if (companyInsertError) {
+        alert(companyInsertError.message);
+        return;
+      }
     }
 
     alert("Empresa registrada correctamente");
