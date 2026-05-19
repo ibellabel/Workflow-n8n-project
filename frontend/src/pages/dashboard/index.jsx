@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import {
   AlertCircle,
   Briefcase,
@@ -385,6 +386,7 @@ function CompanyDashboard({ session }) {
 
 function CandidateDashboard({ session }) {
   const [activeTab, setActiveTab] = useState("hire-match");
+  const navigate = useNavigate();
   const [applications, setApplications] = useState([]);
   const [topMatches, setTopMatches] = useState([]);
   const [isLoadingTopMatches, setIsLoadingTopMatches] = useState(false);
@@ -453,34 +455,62 @@ function CandidateDashboard({ session }) {
   }, [session.candidate_id]);
 
   const handleUploadCv = async (e) => {
-    e.preventDefault();
-    if (!cvFile || !cvSalary || !cvWorkPreference || !session.candidate_id) return;
+  e.preventDefault();
+  if (!cvFile) return;
 
-    setIsUploadingCv(true);
-    setUploadCvStatus(null);
+  setIsUploadingCv(true);
 
-    try {
-      const formData = new FormData();
-      formData.append("candidate_id", session.candidate_id);
-      formData.append("salary", cvSalary);
-      formData.append("work_preference", cvWorkPreference);
-      formData.append("cv", cvFile);
+  // Simulamos un pequeño delay para que se vea el loading
+  setTimeout(() => {
+    const resultado = {
+      perfil: {
+        nombre: session.full_name || "Candidato",
+        titulo_profesional: "Profesional en análisis",
+        resumen_ia: "Tu CV está siendo procesado. Los resultados reales estarán disponibles cuando el backend esté conectado.",
+        años_experiencia: 2,
+        nivel: "Intermedio",
+      },
+      score_total: 72,
+      clasificacion: "medio",
+      veredicto: "Perfil sólido — conecta el backend para ver tu score real",
+      dimensiones: {
+        experiencia: 70,
+        habilidades_tecnicas: 65,
+        formacion: 75,
+        presentacion: 78,
+        alineacion_cargo: 68,
+      },
+      habilidades_detectadas: ["React", "Node.js", "PostgreSQL", "Git", "CSS"],
+      habilidades_match: ["React", "Node.js", "PostgreSQL"],
+      habilidades_gap: ["Docker", "AWS", "CI/CD"],
+      recomendaciones: [
+        {
+          tipo: "tip",
+          titulo: "Agrega métricas a tu experiencia",
+          detalle: "Cambia descripciones genéricas por logros con números concretos.",
+          impacto: "Alto",
+        },
+        {
+          tipo: "course",
+          titulo: "Aprende Docker",
+          detalle: "Docker es requerido en la mayoría de ofertas tech.",
+          impacto: "Alto",
+          recurso_url: "https://www.docker.com/get-started/",
+        },
+        {
+          tipo: "warn",
+          titulo: "Falta sección de proyectos",
+          detalle: "Agregar proyectos personales aumenta tu visibilidad con reclutadores.",
+          impacto: "Medio",
+        },
+      ],
+    };
 
-      const res = await axios.post(`${API_BASE_URL}/upload-cv`, formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
-
-      setUploadCvStatus({ type: "success", message: res.data.message || "CV analizado exitosamente." });
-      setCvFile(null);
-      setCvSalary("");
-      setCvWorkPreference("Remoto");
-    } catch (error) {
-      setUploadCvStatus({ type: "error", message: error.response?.data?.error || "Ocurrió un error al analizar el CV." });
-    } finally {
-      setIsUploadingCv(false);
-    }
-  };
-
+    navigate("/dashboard/resultados", { state: { resultado } });
+    setIsUploadingCv(false);
+  }, 2000);
+};
+     
   return (
     <DashboardShell
       windows={windows}
