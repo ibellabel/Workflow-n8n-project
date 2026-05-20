@@ -2,7 +2,7 @@ const db = require('../../config/db');
 
 class MatchModel {
     async getCandidateById(candidateId) {
-        const res = await db.query(`SELECT * FROM candidate_profiles WHERE id = $1`, [candidateId]);
+        const res = await db.query(`SELECT * FROM candidate_profiles WHERE user_id = $1`, [candidateId]);
         return res.rows.length > 0 ? res.rows[0] : null;
     }
 
