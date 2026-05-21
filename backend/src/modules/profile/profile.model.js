@@ -24,6 +24,58 @@ class ProfileModel {
         return res.rows;
     }
 
+    async updateProfileById(id, updates) {
+    const fields = [];
+    const values = [];
+    let index = 1;
+
+    if (updates.full_name !== undefined) {
+        fields.push(`full_name = $${index++}`);
+        values.push(updates.full_name);
+    }
+
+    if (updates.location_city !== undefined) {
+        fields.push(`location_city = $${index++}`);
+        values.push(updates.location_city);
+    }
+
+    if (updates.expected_salary_cop !== undefined) {
+        fields.push(`expected_salary_cop = $${index++}`);
+        values.push(updates.expected_salary_cop);
+    }
+
+    if (updates.work_preferences !== undefined) {
+        fields.push(`work_preferences = $${index++}`);
+        values.push(
+            Array.isArray(updates.work_preferences)
+                ? JSON.stringify(updates.work_preferences)
+                : updates.work_preferences
+        );
+    }
+
+    if (updates.auto_apply_enabled !== undefined) {
+        fields.push(`auto_apply_enabled = $${index++}`);
+        values.push(Boolean(updates.auto_apply_enabled));
+    }
+
+    if (fields.length === 0) {
+        return this.getProfileById(id);
+    }
+
+    fields.push(`updated_at = NOW()`);
+    values.push(id);
+
+    const query = `
+        UPDATE candidate_profiles
+        SET ${fields.join(", ")}
+        WHERE id = $${index} OR user_id = $${index}
+        RETURNING *
+    `;
+
+    const res = await db.query(query, values);
+    return res.rows.length > 0 ? res.rows[0] : null;
+    }
+
     async updateProfileData(id, score, feedbackStr, updates) {
         const { expected_salary_cop, location_city, work_preferences, parsed_cv_data } = updates;
         

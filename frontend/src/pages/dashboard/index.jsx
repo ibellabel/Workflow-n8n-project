@@ -392,6 +392,25 @@ function CandidateDashboard({ session }) {
   const [aspirationalMatches, setAspirationalMatches] = useState([]);
   const [isLoadingAspirations, setIsLoadingAspirations] = useState(false);
   const [aspirationsError, setAspirationsError] = useState(null);
+
+  const [profileData, setProfileData] = useState({
+    full_name: "",
+    email: "",
+    location_city: "",
+    expected_salary_cop: "",
+    work_preferences: "",
+    auto_apply_enabled: false,
+    parsed_cv_data: null,
+    profile_score: null,
+    feedback_notes: "",
+    updated_at: ""
+  });
+
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [profileSuccess, setProfileSuccess] = useState("");
+
   const [cvFile, setCvFile] = useState(null);
   const [cvSalary, setCvSalary] = useState("");
   const [cvWorkPreference, setCvWorkPreference] = useState("Remoto");
@@ -402,6 +421,7 @@ function CandidateDashboard({ session }) {
     { id: "hire-match", name: "Hire match", icon: Briefcase },
     { id: "aspirations", name: "Aspiraciones", icon: Target },
     { id: "applications", name: "Mis postulaciones", icon: ClipboardList },
+    { id: "mi-perfil", name: "Mi perfil", icon: Users },
     { id: "upload-cv", name: "Analizar CV", icon: UploadCloud }
   ];
 
@@ -451,6 +471,94 @@ function CandidateDashboard({ session }) {
     fetchAspirational();
     fetchTopMatches();
   }, [session.candidate_id]);
+
+    const normalizeProfile = (data) => {
+    const workPreferencesValue = Array.isArray(data.work_preferences)
+      ? data.work_preferences.join(", ")
+      : (data.work_preferences || "");
+
+    return {
+      full_name: data.full_name || "",
+      email: data.email || "",
+      location_city: data.location_city || "",
+      expected_salary_cop: data.expected_salary_cop ?? "",
+      work_preferences: workPreferencesValue,
+      auto_apply_enabled: Boolean(data.auto_apply_enabled),
+      parsed_cv_data: data.parsed_cv_data || null,
+      profile_score: data.profile_score ?? null,
+      feedback_notes: data.feedback_notes || "",
+      updated_at: data.updated_at || ""
+    };
+  };
+
+  useEffect(() => {
+    const candidateId = session.candidate_id;
+
+    if (!candidateId) {
+      setProfileError("No hay perfil de candidato asociado a esta sesión.");
+      return;
+    }
+
+    const fetchProfile = async () => {
+      setProfileLoading(true);
+      setProfileError("");
+      setProfileSuccess("");
+
+      try {
+        const { data } = await axios.get(`${API_BASE_URL}/profile/${candidateId}`);
+        setProfileData(normalizeProfile(data));
+      } catch (err) {
+        setProfileError(err.response?.data?.error || "No se pudo cargar tu perfil.");
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [session.candidate_id]);
+
+  const handleProfileChange = (event) => {
+    const { name, value, type, checked } = event.target;
+
+    setProfileData((current) => ({
+      ...current,
+      [name]: type === "checkbox" ? checked : value
+    }));
+  };
+
+  const handleSaveProfile = async (event) => {
+    event.preventDefault();
+
+    if (!session.candidate_id) {
+      setProfileError("No hay perfil de candidato asociado a esta sesión.");
+      return;
+    }
+
+    setProfileSaving(true);
+    setProfileError("");
+    setProfileSuccess("");
+
+    try {
+      await axios.put(`${API_BASE_URL}/profile/${session.candidate_id}`, {
+        full_name: profileData.full_name.trim(),
+        location_city: profileData.location_city.trim(),
+        expected_salary_cop: profileData.expected_salary_cop === ""
+          ? null
+          : Number(profileData.expected_salary_cop),
+        work_preferences: profileData.work_preferences
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean),
+        auto_apply_enabled: profileData.auto_apply_enabled
+      });
+
+      setProfileSuccess("Perfil actualizado correctamente.");
+    } catch (err) {
+      setProfileError(err.response?.data?.error || "No se pudo actualizar tu perfil.");
+    } finally {
+      setProfileSaving(false);
+    }
+  };
 
   const handleUploadCv = async (e) => {
     e.preventDefault();
@@ -525,6 +633,181 @@ function CandidateDashboard({ session }) {
 
       {activeTab === "applications" && (
         <CandidateApplications applications={applications} />
+      )}
+
+      {activeTab === "mi-perfil" && (
+        <div className="max-w-5xl mx-auto space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white shadow-lg">
+              <Users className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">Mi perfil</h2>
+              <p className="text-slate-500">
+                Revisa y actualiza tu información sin volver a subir tu hoja de vida.
+              </p>
+            </div>
+          </div>
+
+          {profileError && (
+            <div className="bg-red-50 text-red-700 border border-red-100 p-4 rounded-xl flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              <p>{profileError}</p>
+            </div>
+          )}
+
+          {profileSuccess && (
+            <div className="bg-emerald-50 text-emerald-700 border border-emerald-100 p-4 rounded-xl flex items-center gap-3">
+              <CheckCircle2 className="w-5 h-5 shrink-0" />
+              <p>{profileSuccess}</p>
+            </div>
+          )}
+
+          {profileLoading ? (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10">
+              <LoadingBlock label="Cargando tu perfil..." />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_0.9fr] gap-6">
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Información editable</h3>
+                    <p className="text-sm text-slate-500">Edita lo que necesitas y guarda al instante.</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSaveProfile} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <FormField label="Nombre completo" className="md:col-span-2">
+                    <input
+                      name="full_name"
+                      value={profileData.full_name}
+                      onChange={handleProfileChange}
+                      className="input"
+                      placeholder="Tu nombre completo"
+                    />
+                  </FormField>
+
+                  <FormField label="Correo electrónico" className="md:col-span-2">
+                    <input
+                      value={profileData.email}
+                      disabled
+                      className="input bg-slate-100 text-slate-500 cursor-not-allowed"
+                    />
+                  </FormField>
+
+                  <FormField label="Ciudad / ubicación">
+                    <input
+                      name="location_city"
+                      value={profileData.location_city}
+                      onChange={handleProfileChange}
+                      className="input"
+                      placeholder="Ej. Medellín"
+                    />
+                  </FormField>
+
+                  <FormField label="Salario esperado (COP)">
+                    <input
+                      name="expected_salary_cop"
+                      type="number"
+                      min="0"
+                      value={profileData.expected_salary_cop}
+                      onChange={handleProfileChange}
+                      className="input"
+                      placeholder="Ej. 5000000"
+                    />
+                  </FormField>
+
+                  <FormField label="Preferencias de trabajo" className="md:col-span-2">
+                    <input
+                      name="work_preferences"
+                      value={profileData.work_preferences}
+                      onChange={handleProfileChange}
+                      className="input"
+                      placeholder="Ej. Remoto, Híbrido"
+                    />
+                    <p className="text-xs text-slate-500">
+                      Separa varias opciones con coma.
+                    </p>
+                  </FormField>
+
+                  <label className="md:col-span-2 flex items-center gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <input
+                      type="checkbox"
+                      name="auto_apply_enabled"
+                      checked={profileData.auto_apply_enabled}
+                      onChange={handleProfileChange}
+                      className="w-4 h-4 accent-indigo-600"
+                    />
+                    <div>
+                      <span className="font-semibold text-slate-700 block">Auto postulación activada</span>
+                      <span className="text-sm text-slate-500">
+                        Permite que el sistema postule tu perfil automáticamente cuando haya coincidencias.
+                      </span>
+                    </div>
+                  </label>
+
+                  <div className="md:col-span-2 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={profileSaving}
+                      className="h-12 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-2 disabled:opacity-60"
+                    >
+                      {profileSaving ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-5 h-5" />
+                      )}
+                      {profileSaving ? "Guardando..." : "Guardar cambios"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <div className="space-y-6">
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4">Resumen del perfil</h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                      <p className="text-xs text-slate-500">Score de perfil</p>
+                      <p className="text-2xl font-bold text-indigo-600">
+                        {profileData.profile_score !== null ? `${Math.round(Number(profileData.profile_score))}%` : "Sin dato"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                      <p className="text-xs text-slate-500">Última actualización</p>
+                      <p className="text-sm font-semibold text-slate-800">
+                        {profileData.updated_at ? new Date(profileData.updated_at).toLocaleString("es-CO") : "Sin dato"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                  <h3 className="text-lg font-bold text-slate-900 mb-3">Retroalimentación</h3>
+                  <p className="text-sm text-slate-600 whitespace-pre-line">
+                    {profileData.feedback_notes || "Todavía no hay observaciones disponibles."}
+                  </p>
+                </div>
+
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                  <h3 className="text-lg font-bold text-slate-900 mb-3">Datos detectados desde CV</h3>
+                  {profileData.parsed_cv_data ? (
+                    <pre className="text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-xl p-4 overflow-auto">
+                      {JSON.stringify(profileData.parsed_cv_data, null, 2)}
+                    </pre>
+                  ) : (
+                    <p className="text-sm text-slate-500">
+                      Todavía no hay información procesada desde tu CV.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {activeTab === "upload-cv" && (
