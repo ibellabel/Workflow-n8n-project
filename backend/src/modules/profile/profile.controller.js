@@ -25,6 +25,40 @@ exports.getApplications = async (req, res) => {
     }
 };
 
+exports.updateProfile = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            full_name,
+            location_city,
+            expected_salary_cop,
+            work_preferences,
+            auto_apply_enabled
+        } = req.body;
+
+        const existingProfile = await profileModel.getProfileById(id);
+        if (!existingProfile) {
+            return res.status(404).json({ error: "Perfil no encontrado" });
+        }
+
+        const updatedProfile = await profileModel.updateProfileById(id, {
+            full_name,
+            location_city,
+            expected_salary_cop: expected_salary_cop === "" ? null : expected_salary_cop,
+            work_preferences,
+            auto_apply_enabled
+        });
+
+        res.json({
+            message: "Perfil actualizado correctamente",
+            profile: updatedProfile
+        });
+    } catch (error) {
+        console.error("Error en updateProfile:", error);
+        res.status(500).json({ error: "Error interno al actualizar el perfil." });
+    }
+};
+
 exports.scoreProfile = async (req, res) => {
     try {
         const { id, skills, expected_salary_cop, experience_years, location_city, work_preference, work_preferences } = req.body;
