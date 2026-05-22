@@ -12,6 +12,8 @@ const upload = multer({
 // Obtener perfil completo del candidato
 router.get('/profile/:id', profileController.getProfile);
 
+router.put('/profile/:id', profileController.updateProfile);
+
 // Obtener todas las postulaciones de un candidato
 router.get('/applications/:id', profileController.getApplications);
 
