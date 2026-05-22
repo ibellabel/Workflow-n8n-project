@@ -58,6 +58,11 @@ class ProfileModel {
         values.push(Boolean(updates.auto_apply_enabled));
     }
 
+    if (updates.parsed_cv_data !== undefined) {
+        fields.push(`parsed_cv_data = $${index++}::jsonb`);
+        values.push(JSON.stringify(updates.parsed_cv_data));
+    }
+
     if (fields.length === 0) {
         return this.getProfileById(id);
     }
@@ -74,7 +79,7 @@ class ProfileModel {
 
     const res = await db.query(query, values);
     return res.rows.length > 0 ? res.rows[0] : null;
-    }
+}
 
     async updateProfileData(id, score, feedbackStr, updates) {
         const { expected_salary_cop, location_city, work_preferences, parsed_cv_data } = updates;

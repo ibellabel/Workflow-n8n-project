@@ -394,16 +394,20 @@ function CandidateDashboard({ session }) {
   const [aspirationsError, setAspirationsError] = useState(null);
 
   const [profileData, setProfileData] = useState({
-    full_name: "",
-    email: "",
-    location_city: "",
-    expected_salary_cop: "",
-    work_preferences: "",
-    auto_apply_enabled: false,
-    parsed_cv_data: null,
-    profile_score: null,
-    feedback_notes: "",
-    updated_at: ""
+  full_name: "",
+  email: "",
+  location_city: "",
+  expected_salary_cop: "",
+  work_preferences: "",
+  auto_apply_enabled: false,
+  skills: "",
+  education_level: "",
+  experience_years: "",
+  experience_summary: "",
+  parsed_cv_data: null,
+  profile_score: null,
+  feedback_notes: "",
+  updated_at: ""
   });
 
   const [profileLoading, setProfileLoading] = useState(false);
@@ -472,23 +476,33 @@ function CandidateDashboard({ session }) {
     fetchTopMatches();
   }, [session.candidate_id]);
 
-    const normalizeProfile = (data) => {
-    const workPreferencesValue = Array.isArray(data.work_preferences)
-      ? data.work_preferences.join(", ")
-      : (data.work_preferences || "");
+  const normalizeProfile = (data) => {
+  const parsedCv = data.parsed_cv_data || {};
 
-    return {
-      full_name: data.full_name || "",
-      email: data.email || "",
-      location_city: data.location_city || "",
-      expected_salary_cop: data.expected_salary_cop ?? "",
-      work_preferences: workPreferencesValue,
-      auto_apply_enabled: Boolean(data.auto_apply_enabled),
-      parsed_cv_data: data.parsed_cv_data || null,
-      profile_score: data.profile_score ?? null,
-      feedback_notes: data.feedback_notes || "",
-      updated_at: data.updated_at || ""
-    };
+  const skillsValue = Array.isArray(parsedCv.skills)
+    ? parsedCv.skills.join(", ")
+    : typeof parsedCv.skills === "string"
+      ? parsedCv.skills
+      : "";
+
+  return {
+    full_name: data.full_name || "",
+    email: data.email || "",
+    location_city: data.location_city || "",
+    expected_salary_cop: data.expected_salary_cop ?? "",
+    work_preferences: Array.isArray(data.work_preferences)
+      ? data.work_preferences.join(", ")
+      : (data.work_preferences || ""),
+    auto_apply_enabled: Boolean(data.auto_apply_enabled),
+    skills: skillsValue,
+    education_level: parsedCv.education_level || "",
+    experience_years: parsedCv.experience_years ?? "",
+    experience_summary: parsedCv.experience_summary || "",
+    parsed_cv_data: parsedCv,
+    profile_score: data.profile_score ?? null,
+    feedback_notes: data.feedback_notes || "",
+    updated_at: data.updated_at || ""
+  };
   };
 
   useEffect(() => {
@@ -526,39 +540,48 @@ function CandidateDashboard({ session }) {
     }));
   };
 
-  const handleSaveProfile = async (event) => {
-    event.preventDefault();
+const handleSaveProfile = async (event) => {
+  event.preventDefault();
 
-    if (!session.candidate_id) {
-      setProfileError("No hay perfil de candidato asociado a esta sesión.");
-      return;
-    }
+  if (!session.candidate_id) {
+    setProfileError("No hay perfil de candidato asociado a esta sesión.");
+    return;
+  }
 
-    setProfileSaving(true);
-    setProfileError("");
-    setProfileSuccess("");
+  setProfileSaving(true);
+  setProfileError("");
+  setProfileSuccess("");
 
-    try {
-      await axios.put(`${API_BASE_URL}/profile/${session.candidate_id}`, {
-        full_name: profileData.full_name.trim(),
-        location_city: profileData.location_city.trim(),
-        expected_salary_cop: profileData.expected_salary_cop === ""
-          ? null
-          : Number(profileData.expected_salary_cop),
-        work_preferences: profileData.work_preferences
-          .split(",")
-          .map((item) => item.trim())
-          .filter(Boolean),
-        auto_apply_enabled: profileData.auto_apply_enabled
-      });
+  try {
+    await axios.put(`${API_BASE_URL}/profile/${session.candidate_id}`, {
+      full_name: profileData.full_name.trim(),
+      location_city: profileData.location_city.trim(),
+      expected_salary_cop: profileData.expected_salary_cop === ""
+        ? null
+        : Number(profileData.expected_salary_cop),
+      work_preferences: profileData.work_preferences
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
+      auto_apply_enabled: profileData.auto_apply_enabled,
+      skills: profileData.skills
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
+      education_level: profileData.education_level.trim(),
+      experience_years: profileData.experience_years === ""
+        ? null
+        : Number(profileData.experience_years),
+      experience_summary: profileData.experience_summary.trim()
+    });
 
-      setProfileSuccess("Perfil actualizado correctamente.");
-    } catch (err) {
-      setProfileError(err.response?.data?.error || "No se pudo actualizar tu perfil.");
-    } finally {
-      setProfileSaving(false);
-    }
-  };
+    setProfileSuccess("Perfil actualizado correctamente.");
+  } catch (err) {
+    setProfileError(err.response?.data?.error || "No se pudo actualizar tu perfil.");
+  } finally {
+    setProfileSaving(false);
+  }
+};
 
   const handleUploadCv = async (e) => {
     e.preventDefault();
@@ -641,8 +664,12 @@ function CandidateDashboard({ session }) {
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white shadow-lg">
               <Users className="w-6 h-6" />
             </div>
+
             <div>
-              <h2 className="text-2xl font-bold text-slate-900">Mi perfil</h2>
+              <h2 className="text-2xl font-bold text-slate-900">
+                Mi perfil
+              </h2>
+
               <p className="text-slate-500">
                 Revisa y actualiza tu información sin volver a subir tu hoja de vida.
               </p>
@@ -669,15 +696,27 @@ function CandidateDashboard({ session }) {
             </div>
           ) : (
             <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_0.9fr] gap-6">
+
+              {/* COLUMNA IZQUIERDA */}
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900">Información editable</h3>
-                    <p className="text-sm text-slate-500">Edita lo que necesitas y guarda al instante.</p>
+                    <h3 className="text-lg font-bold text-slate-900">
+                      Información editable
+                    </h3>
+
+                    <p className="text-sm text-slate-500">
+                      Edita lo que necesitas y guarda al instante.
+                    </p>
                   </div>
                 </div>
 
-                <form onSubmit={handleSaveProfile} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <form
+                  onSubmit={handleSaveProfile}
+                  className="grid grid-cols-1 md:grid-cols-2 gap-5"
+                >
+
                   <FormField label="Nombre completo" className="md:col-span-2">
                     <input
                       name="full_name"
@@ -726,9 +765,67 @@ function CandidateDashboard({ session }) {
                       className="input"
                       placeholder="Ej. Remoto, Híbrido"
                     />
+
                     <p className="text-xs text-slate-500">
                       Separa varias opciones con coma.
                     </p>
+                  </FormField>
+
+                  <FormField label="Habilidades" className="md:col-span-2">
+                    <input
+                      name="skills"
+                      value={profileData.skills}
+                      onChange={handleProfileChange}
+                      className="input"
+                      placeholder="Ej. Python, SQL, Power BI"
+                    />
+
+                    <p className="text-xs text-slate-500">
+                      Separa varias habilidades con coma.
+                    </p>
+                  </FormField>
+
+                  <FormField label="Nivel de educación">
+                    <select
+                      name="education_level"
+                      value={profileData.education_level}
+                      onChange={handleProfileChange}
+                      className="input bg-white"
+                    >
+                      <option value="">Selecciona una opción</option>
+                      <option value="BACHILLER">Bachiller</option>
+                      <option value="TECNICO">Técnico</option>
+                      <option value="TECNÓLOGO">Tecnólogo</option>
+                      <option value="PREGRADO">Pregrado</option>
+                      <option value="POSGRADO">Posgrado</option>
+                      <option value="MAESTRIA">Maestría</option>
+                      <option value="DOCTORADO">Doctorado</option>
+                    </select>
+                  </FormField>
+
+                  <FormField label="Años de experiencia">
+                    <input
+                      name="experience_years"
+                      type="number"
+                      min="0"
+                      value={profileData.experience_years}
+                      onChange={handleProfileChange}
+                      className="input"
+                      placeholder="Ej. 2"
+                    />
+                  </FormField>
+
+                  <FormField
+                    label="Resumen de experiencia"
+                    className="md:col-span-2"
+                  >
+                    <textarea
+                      name="experience_summary"
+                      value={profileData.experience_summary}
+                      onChange={handleProfileChange}
+                      className="input min-h-[120px] resize-y"
+                      placeholder="Describe aquí tu experiencia laboral, proyectos o roles anteriores"
+                    />
                   </FormField>
 
                   <label className="md:col-span-2 flex items-center gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
@@ -739,8 +836,12 @@ function CandidateDashboard({ session }) {
                       onChange={handleProfileChange}
                       className="w-4 h-4 accent-indigo-600"
                     />
+
                     <div>
-                      <span className="font-semibold text-slate-700 block">Auto postulación activada</span>
+                      <span className="font-semibold text-slate-700 block">
+                        Auto postulación activada
+                      </span>
+
                       <span className="text-sm text-slate-500">
                         Permite que el sistema postule tu perfil automáticamente cuando haya coincidencias.
                       </span>
@@ -758,52 +859,132 @@ function CandidateDashboard({ session }) {
                       ) : (
                         <CheckCircle2 className="w-5 h-5" />
                       )}
+
                       {profileSaving ? "Guardando..." : "Guardar cambios"}
                     </button>
                   </div>
                 </form>
               </div>
 
+              {/* COLUMNA DERECHA */}
               <div className="space-y-6">
+
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-                  <h3 className="text-lg font-bold text-slate-900 mb-4">Resumen del perfil</h3>
+                  <h3 className="text-lg font-bold text-slate-900 mb-4">
+                    Resumen del perfil
+                  </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
                     <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
-                      <p className="text-xs text-slate-500">Score de perfil</p>
+                      <p className="text-xs text-slate-500">
+                        Score de perfil
+                      </p>
+
                       <p className="text-2xl font-bold text-indigo-600">
-                        {profileData.profile_score !== null ? `${Math.round(Number(profileData.profile_score))}%` : "Sin dato"}
+                        {profileData.profile_score !== null
+                          ? `${Math.round(Number(profileData.profile_score))}%`
+                          : "Sin dato"}
                       </p>
                     </div>
 
                     <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
-                      <p className="text-xs text-slate-500">Última actualización</p>
+                      <p className="text-xs text-slate-500">
+                        Última actualización
+                      </p>
+
                       <p className="text-sm font-semibold text-slate-800">
-                        {profileData.updated_at ? new Date(profileData.updated_at).toLocaleString("es-CO") : "Sin dato"}
+                        {profileData.updated_at
+                          ? new Date(profileData.updated_at).toLocaleString("es-CO")
+                          : "Sin dato"}
                       </p>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-                  <h3 className="text-lg font-bold text-slate-900 mb-3">Retroalimentación</h3>
+                  <h3 className="text-lg font-bold text-slate-900 mb-4">
+                    Información guardada
+                  </h3>
+
+                  <div className="space-y-4">
+
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">
+                        Habilidades
+                      </p>
+
+                      <div className="flex flex-wrap gap-2">
+                        {(profileData.skills || "")
+                          .split(",")
+                          .map((skill) => skill.trim())
+                          .filter(Boolean)
+                          .map((skill) => (
+                            <span
+                              key={skill}
+                              className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 text-xs font-semibold"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">
+                        Nivel de educación
+                      </p>
+
+                      <p className="font-medium text-slate-800">
+                        {profileData.education_level || "Sin registrar"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">
+                        Años de experiencia
+                      </p>
+
+                      <p className="font-medium text-slate-800">
+                        {profileData.experience_years || "0"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">
+                        Resumen de experiencia
+                      </p>
+
+                      <p className="font-medium text-slate-800 whitespace-pre-line">
+                        {profileData.experience_summary || "Sin resumen"}
+                      </p>
+                    </div>
+
+                  </div>
+
+                  {profileData.parsed_cv_data && (
+                    <details className="mt-6">
+                      <summary className="cursor-pointer text-sm font-semibold text-indigo-600">
+                        Ver JSON completo
+                      </summary>
+
+                      <pre className="mt-3 text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-xl p-4 overflow-auto">
+                        {JSON.stringify(profileData.parsed_cv_data, null, 2)}
+                      </pre>
+                    </details>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                  <h3 className="text-lg font-bold text-slate-900 mb-3">
+                    Retroalimentación
+                  </h3>
+
                   <p className="text-sm text-slate-600 whitespace-pre-line">
                     {profileData.feedback_notes || "Todavía no hay observaciones disponibles."}
                   </p>
                 </div>
 
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-                  <h3 className="text-lg font-bold text-slate-900 mb-3">Datos detectados desde CV</h3>
-                  {profileData.parsed_cv_data ? (
-                    <pre className="text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-xl p-4 overflow-auto">
-                      {JSON.stringify(profileData.parsed_cv_data, null, 2)}
-                    </pre>
-                  ) : (
-                    <p className="text-sm text-slate-500">
-                      Todavía no hay información procesada desde tu CV.
-                    </p>
-                  )}
-                </div>
               </div>
             </div>
           )}

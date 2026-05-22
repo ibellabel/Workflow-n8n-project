@@ -28,25 +28,58 @@ exports.getApplications = async (req, res) => {
 exports.updateProfile = async (req, res) => {
     try {
         const { id } = req.params;
+
         const {
             full_name,
             location_city,
             expected_salary_cop,
             work_preferences,
-            auto_apply_enabled
+            auto_apply_enabled,
+            skills,
+            education_level,
+            experience_years,
+            experience_summary
         } = req.body;
 
         const existingProfile = await profileModel.getProfileById(id);
+
         if (!existingProfile) {
             return res.status(404).json({ error: "Perfil no encontrado" });
         }
+
+        let existingParsed = {};
+
+        if (existingProfile.parsed_cv_data) {
+            existingParsed =
+                typeof existingProfile.parsed_cv_data === "string"
+                    ? JSON.parse(existingProfile.parsed_cv_data)
+                    : existingProfile.parsed_cv_data;
+        }
+
+        const normalizedSkills = Array.isArray(skills)
+            ? skills
+            : typeof skills === "string"
+                ? skills.split(",").map((skill) => skill.trim()).filter(Boolean)
+                : existingParsed.skills || [];
+
+        const mergedParsedCvData = {
+            ...existingParsed,
+            skills: normalizedSkills,
+            education_level: education_level ?? existingParsed.education_level ?? "",
+            experience_years:
+                experience_years === "" || experience_years === null || experience_years === undefined
+                    ? existingParsed.experience_years
+                    : Number(experience_years),
+            experience_summary: experience_summary ?? existingParsed.experience_summary ?? ""
+        };
 
         const updatedProfile = await profileModel.updateProfileById(id, {
             full_name,
             location_city,
             expected_salary_cop: expected_salary_cop === "" ? null : expected_salary_cop,
             work_preferences,
-            auto_apply_enabled
+            auto_apply_enabled,
+            parsed_cv_data: mergedParsedCvData
         });
 
         res.json({
