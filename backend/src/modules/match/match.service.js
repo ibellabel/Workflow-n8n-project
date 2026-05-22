@@ -1,10 +1,14 @@
 const matchModel = require('./match.model');
 
 class MatchService {
+    getJobSkills(job) {
+        const requirements = job.requirements || {};
+        return requirements.skills || requirements.skills_required || [];
+    }
 
     async calculateAIAffinityBatch(candidate, jobs) {
-        if (!process.env.GEMINI_API_KEY || jobs.length === 0) {
-            console.warn("No GEMINI_API_KEY provided or no jobs available. Using basic algorithm.");
+        if (process.env.MATCH_USE_AI !== 'true' || !process.env.GEMINI_API_KEY || jobs.length === 0) {
+            console.warn("External AI matching is disabled or unavailable. Using basic algorithm.");
             return this.basicMatchAlgorithmBatch(candidate, jobs);
         }
 
@@ -19,7 +23,7 @@ class MatchService {
             const jobsList = jobs.map(j => ({
                 id: j.id,
                 title: j.title,
-                skills: (j.requirements && j.requirements.skills) ? j.requirements.skills : [],
+                skills: this.getJobSkills(j),
                 max_salary: j.salary_range_max_cop,
                 location: j.location
             }));
@@ -46,10 +50,15 @@ Devuelve SOLO UN JSON válido con un arreglo llamado "matches" de la siguiente m
   ]
 }`;
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: prompt,
-            });
+            const response = await Promise.race([
+                ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: prompt,
+                }),
+                new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('Timeout llamando a Gemini')), 2500);
+                })
+            ]);
 
             let text = response.text;
             text = text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -74,7 +83,7 @@ Devuelve SOLO UN JSON válido con un arreglo llamado "matches" de la siguiente m
         const expectedSalary = candidate.expected_salary_cop;
 
         return jobs.map(job => {
-            const jobSkills = (job.requirements && job.requirements.skills) ? job.requirements.skills : [];
+            const jobSkills = this.getJobSkills(job);
             const jobSkillsLower = jobSkills.map(s => s.toLowerCase());
             const commonSkills = jobSkillsLower.filter(s => userSkillsLower.includes(s));
             const missingSkills = jobSkillsLower.filter(s => !userSkillsLower.includes(s));

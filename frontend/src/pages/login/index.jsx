@@ -7,42 +7,72 @@ import { CompanyRegisterForm } from "./components/CompanyRegisterForm";
 import { ScorePreviewCard } from "./components/ScorePreviewCard";
 import { supabase } from "../../lib/supabaseClient";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001/api";
+
+const apiRequest = async (path, options = {}) => {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(result.error || "No se pudo completar el registro");
+  }
+
+  return result;
+};
+
+const createProfile = (path, payload) => apiRequest(path, {
+  method: "POST",
+  body: JSON.stringify(payload),
+});
+
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState("login");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    const frameId = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(frameId);
   }, []);
 
   // LOGIN
   const handleLogin = async (data) => {
     const { email, password } = data;
 
-    const { data: authData, error } =
+    const { data: authData, error: authError } =
       await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-    if (error) {
-      throw new Error("Credenciales inválidas");
+    if (authError) {
+      try {
+        const { user } = await createProfile("/auth/login", { email, password });
+        localStorage.setItem("hire_match_session", JSON.stringify(user));
+        window.location.href = "/dashboard";
+        return;
+      } catch {
+        throw new Error("Credenciales inválidas");
+      }
     }
 
     const userId = authData.user.id;
 
-    const { data: userData } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", userId)
-      .single();
+    const { user } = await apiRequest(`/auth/session/${userId}`);
 
     const sessionData = {
       id: userId,
-      role: userData?.role || "CANDIDATE",
-      candidate_id: userId,
-      company_id: userId,
+      role: user.role,
+      candidate_id: user.candidate_id,
+      company_id: user.company_id,
       email: authData.user.email,
+      full_name: user.full_name,
     };
 
     localStorage.setItem(
@@ -59,7 +89,7 @@ export default function LoginPage() {
 
   // REGISTRO USUARIO
   const handleRegister = async (data) => {
-    const { fullName, email, password } = data;
+    const { name, email, password } = data;
 
     const { data: authData, error } =
       await supabase.auth.signUp({
@@ -68,42 +98,20 @@ export default function LoginPage() {
       });
 
     if (error) {
-      alert(error.message);
-      return;
+      throw new Error(error.message);
     }
 
     const user = authData.user;
 
-    if (user) {
-      const { error: userInsertError } =
-        await supabase.from("users").insert([
-          {
-            id: user.id,
-            email,
-            password_hash: "supabase_auth",
-            role: "CANDIDATE",
-            is_active: true,
-          },
-        ]);
-
-      if (userInsertError) {
-        alert(userInsertError.message);
-        return;
-      }
-
-      const { error: candidateInsertError } =
-        await supabase.from("candidate_profiles").insert([
-          {
-            user_id: user.id,
-            full_name: fullName,
-          },
-        ]);
-
-      if (candidateInsertError) {
-        alert(candidateInsertError.message);
-        return;
-      }
+    if (!user) {
+      throw new Error("Supabase no devolvió el usuario creado");
     }
+
+    await createProfile("/auth/register/candidate", {
+      userId: user.id,
+      email,
+      fullName: name,
+    });
 
     alert("Usuario registrado correctamente");
     setActiveTab("login");
@@ -126,45 +134,22 @@ export default function LoginPage() {
       });
 
     if (error) {
-      alert(error.message);
-      return;
+      throw new Error(error.message);
     }
 
     const user = authData.user;
 
-    if (user) {
-
-      const { error: userInsertError } =
-        await supabase.from("users").insert([
-          {
-            id: user.id,
-            email,
-            password_hash: "supabase_auth",
-            role: "COMPANY",
-            is_active: true,
-          },
-        ]);
-
-      if (userInsertError) {
-        alert(userInsertError.message);
-        return;
-      }
-
-      const { error: companyInsertError } =
-        await supabase.from("companies").insert([
-          {
-            user_id: user.id,
-            company_name: companyName,
-            nit,
-            headquarters,
-          },
-        ]);
-
-      if (companyInsertError) {
-        alert(companyInsertError.message);
-        return;
-      }
+    if (!user) {
+      throw new Error("Supabase no devolvió el usuario creado");
     }
+
+    await createProfile("/auth/register/company", {
+      userId: user.id,
+      email,
+      companyName,
+      nit,
+      headquarters,
+    });
 
     alert("Empresa registrada correctamente");
     setActiveTab("login");

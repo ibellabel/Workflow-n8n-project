@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, Lock, User, Briefcase, Loader2, Sparkles, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, User, Loader2, Sparkles, Eye, EyeOff } from "lucide-react";
 
 export const RegisterForm = ({ onSubmit }) => {
   const [formData, setFormData] = useState({
@@ -10,14 +10,20 @@ export const RegisterForm = ({ onSubmit }) => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
-      onSubmit(formData);
+    setError(null);
+
+    try {
+      await onSubmit(formData);
+    } catch (err) {
+      setError(err.message || "Error registrando usuario");
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const handleChange = (e) => {
@@ -28,6 +34,12 @@ export const RegisterForm = ({ onSubmit }) => {
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Rol oculto, por defecto CANDIDATE */}
       <input type="hidden" name="role" value="CANDIDATE" />
+
+      {error && (
+        <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+          {error}
+        </div>
+      )}
 
       <div className="group">
         <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1 uppercase tracking-wider transition-colors group-focus-within:text-indigo-600">
@@ -116,11 +128,3 @@ export const RegisterForm = ({ onSubmit }) => {
     </form>
   );
 };
-
-function CheckIcon(props) {
-  return (
-    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-    </svg>
-  );
-}
