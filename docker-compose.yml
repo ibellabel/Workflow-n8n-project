@@ -11,5 +11,19 @@ services:
       - ./workflows:/data/workflows
     restart: always
 
+  postgres:
+    image: postgres:15
+    container_name: magneto_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: magneto_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
 volumes:
   n8n_data:
+  postgres_data:
