@@ -32,6 +32,17 @@ const createProfile = (path, payload) => apiRequest(path, {
   body: JSON.stringify(payload),
 });
 
+const getAuthErrorMessage = (error) => {
+  const message = error?.message || "";
+  const normalizedMessage = message.toLowerCase();
+
+  if (normalizedMessage.includes("email rate limit exceeded")) {
+    return "Supabase bloqueó temporalmente el envío de correos por límite de rate limit. Espera unos minutos antes de intentar de nuevo o desactiva la confirmación por email en Supabase mientras pruebas.";
+  }
+
+  return message || "No se pudo completar la autenticación";
+};
+
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState("login");
   const [mounted, setMounted] = useState(false);
@@ -95,10 +106,10 @@ export default function LoginPage() {
       await supabase.auth.signUp({
         email,
         password,
-      });
+    });
 
     if (error) {
-      throw new Error(error.message);
+      throw new Error(getAuthErrorMessage(error));
     }
 
     const user = authData.user;
@@ -131,10 +142,10 @@ export default function LoginPage() {
       await supabase.auth.signUp({
         email,
         password,
-      });
+    });
 
     if (error) {
-      throw new Error(error.message);
+      throw new Error(getAuthErrorMessage(error));
     }
 
     const user = authData.user;

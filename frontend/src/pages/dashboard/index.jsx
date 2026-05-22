@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { CVUploadForm } from "./components/CVUploadForm";
 import {
   AlertCircle,
   Briefcase,
@@ -392,11 +393,6 @@ function CandidateDashboard({ session }) {
   const [aspirationalMatches, setAspirationalMatches] = useState([]);
   const [isLoadingAspirations, setIsLoadingAspirations] = useState(false);
   const [aspirationsError, setAspirationsError] = useState(null);
-  const [cvFile, setCvFile] = useState(null);
-  const [cvSalary, setCvSalary] = useState("");
-  const [cvWorkPreference, setCvWorkPreference] = useState("Remoto");
-  const [isUploadingCv, setIsUploadingCv] = useState(false);
-  const [uploadCvStatus, setUploadCvStatus] = useState(null);
 
   const windows = [
     { id: "hire-match", name: "Hire match", icon: Briefcase },
@@ -405,7 +401,7 @@ function CandidateDashboard({ session }) {
     { id: "upload-cv", name: "Analizar CV", icon: UploadCloud }
   ];
 
-  useEffect(() => {
+  const loadCandidateData = useCallback(async () => {
     const candidateId = session.candidate_id;
     if (!candidateId) {
       setTopMatchesError("No hay perfil de candidato asociado a esta sesión.");
@@ -447,43 +443,12 @@ function CandidateDashboard({ session }) {
       }
     };
 
-    fetchApplications();
-    fetchAspirational();
-    fetchTopMatches();
+    await Promise.all([fetchApplications(), fetchAspirational(), fetchTopMatches()]);
   }, [session.candidate_id]);
 
-  const handleUploadCv = async (e) => {
-    e.preventDefault();
-    if (!cvFile) return;
-
-    setIsUploadingCv(true);
-    setUploadCvStatus(null);
-
-    try {
-      const formData = new FormData();
-      formData.append("cv", cvFile);
-      formData.append("candidate_id", session.candidate_id);
-      formData.append("salary", cvSalary);
-      formData.append("work_preference", cvWorkPreference);
-
-      const { data } = await axios.post(`${API_BASE_URL}/upload-cv`, formData);
-      const score = data.response?.profile_score;
-
-      setUploadCvStatus({
-        type: "success",
-        message: score
-          ? `CV procesado por n8n. Score actualizado: ${score}/100.`
-          : "CV procesado por n8n y perfil actualizado correctamente."
-      });
-    } catch (err) {
-      setUploadCvStatus({
-        type: "error",
-        message: err.response?.data?.details || err.response?.data?.error || "No se pudo procesar el CV con n8n."
-      });
-    } finally {
-      setIsUploadingCv(false);
-    }
-  };
+  useEffect(() => {
+    loadCandidateData();
+  }, [loadCandidateData]);
      
   return (
     <DashboardShell
@@ -532,56 +497,12 @@ function CandidateDashboard({ session }) {
       )}
 
       {activeTab === "upload-cv" && (
-        <div className="max-w-3xl mx-auto bg-white p-8 rounded-xl shadow-sm border border-slate-100">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg">
-              <UploadCloud size={24} />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-slate-800">Analizar mi CV</h2>
-              <p className="text-slate-500">Sube tu hoja de vida para activar el onboarding inteligente con N8N</p>
-            </div>
-          </div>
-
-          <form onSubmit={handleUploadCv} className="space-y-6">
-            {uploadCvStatus && (
-              <div className={`p-4 rounded-xl flex items-center gap-3 ${uploadCvStatus.type === "error" ? "bg-red-50 text-red-700 border border-red-100" : "bg-emerald-50 text-emerald-700 border border-emerald-100"}`}>
-                {uploadCvStatus.type === "error" ? <AlertCircle className="w-5 h-5 shrink-0" /> : <CheckCircle2 className="w-5 h-5 shrink-0" />}
-                <p>{uploadCvStatus.message}</p>
-              </div>
-            )}
-
-            <FormField label="Archivo CV (PDF)">
-              <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:bg-slate-50 transition-colors">
-                <input type="file" accept=".pdf" onChange={(e) => setCvFile(e.target.files[0])} className="hidden" id="cv-upload" required />
-                <label htmlFor="cv-upload" className="cursor-pointer flex flex-col items-center gap-2">
-                  <UploadCloud className="w-10 h-10 text-slate-400" />
-                  <span className="text-sm text-slate-600 font-medium">
-                    {cvFile ? cvFile.name : "Haz clic para seleccionar tu CV (solo PDF)"}
-                  </span>
-                </label>
-              </div>
-            </FormField>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField label="Expectativa salarial COP">
-                <input type="number" value={cvSalary} onChange={(e) => setCvSalary(e.target.value)} placeholder="Ej. 5000000" className="input" required />
-              </FormField>
-              <FormField label="Preferencia de trabajo">
-                <select value={cvWorkPreference} onChange={(e) => setCvWorkPreference(e.target.value)} className="input bg-white" required>
-                  <option value="Remoto">Remoto</option>
-                  <option value="Presencial">Presencial</option>
-                  <option value="Híbrido">Híbrido</option>
-                </select>
-              </FormField>
-            </div>
-
-            <button type="submit" disabled={isUploadingCv || !cvFile} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-              {isUploadingCv ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-              {isUploadingCv ? "Procesando con N8N..." : "Analizar perfil"}
-            </button>
-          </form>
-        </div>
+        <CVUploadForm
+          apiBaseUrl={API_BASE_URL}
+          session={session}
+          onUploadSuccess={loadCandidateData}
+          onViewMatches={() => setActiveTab("hire-match")}
+        />
       )}
     </DashboardShell>
   );
